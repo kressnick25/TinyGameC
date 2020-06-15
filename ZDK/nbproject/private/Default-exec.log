@@ -1,0 +1,12 @@
+called: a:\cygwin64\bin\gcc.exe
+	A:\AMS\AMS_2017\CAB202\ZDK
+	a:\cygwin64\bin\gcc.exe
+	-c
+	cab202_graphics.c
+	cab202_sprites.c
+	cab202_timers.c
+	-Wall
+	-Werror
+	-std=gnu99
+	-g
+

@@ -1,0 +1,3 @@
+gcc -c *.c -Wall -Werror -std=gnu99 -g
+ar r libzdk.a *.o
+ar: creating libzdk.a

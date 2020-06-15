@@ -1,0 +1,4 @@
+./out
+
+ZDK/*.o
+ZDK/*.gh

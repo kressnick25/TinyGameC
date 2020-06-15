@@ -1,0 +1,81 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{6A411F76-F6D6-438A-ADD6-AA0ADCBA9AB7}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+    <ProjectName>ZDK</ProjectName>
+    <WindowsTargetPlatformVersion>10.0.16299.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <NMakeBuildCommandLine>make all</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>make rebuild</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>_HAVE_STDC;__CYGWIN__;__x86_64__;__extension__=;__asm__(x)=;_cdecl=;__cdecl=;__inline__=inline;_SYMSTR(x)=_ ## x;__timezonefunc__;__attribute__(x)=;__GNUC_VA_LIST;__gnuc_va_list=va_list;__va_list__=;va_list=void *;__builtin_va_list=void *;__INTPTR_TYPE__=int *;__int16_t=short;__int32_t=int;__int64_t=long;int64_t=long;__uint16_t=unsigned short;__uint32_t=unsigned;__uint64_t=unsigned long;__INT32_TYPE__=int;__intptr_t=int *;__uintptr_t=unsigned *;_SYS__INTSUP_H=;_STDINT_H=;_MACHINE__DEFAULT_TYPES_H=</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(CYGWIN_ROOT)\usr\include;$(CYGWIN_ROOT)\lib\gcc\x86_64-pc-cygwin\$(GCC_VERSION)\include;</NMakeIncludeSearchPath>
+    <IncludePath />
+    <ReferencePath />
+    <LibraryPath />
+    <LibraryWPath />
+    <SourcePath />
+    <ExcludePath />
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <NMakeBuildCommandLine>make all</NMakeBuildCommandLine>
+    <NMakeCleanCommandLine>make clean</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>make rebuild</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;_HAVE_STDC;__CYGWIN__;__x86_64__;__extension__=;__asm__(x)=;_cdecl=;__cdecl=;__inline__=inline;_SYMSTR(x)=_ ## x;__timezonefunc__;__attribute__(x)=;__GNUC_VA_LIST;__gnuc_va_list=va_list;__va_list__=;va_list=void *;__builtin_va_list=void *;__INTPTR_TYPE__=int *;__int16_t=short;__int32_t=int;__int64_t=long;int64_t=long;__uint16_t=unsigned short;__uint32_t=unsigned;__uint64_t=unsigned long;__INT32_TYPE__=int;__intptr_t=int *;__uintptr_t=unsigned *;_SYS__INTSUP_H=;_STDINT_H=;_MACHINE__DEFAULT_TYPES_H=</NMakePreprocessorDefinitions>
+    <NMakeIncludeSearchPath>$(CYGWIN_ROOT)\usr\include;$(CYGWIN_ROOT)\lib\gcc\x86_64-pc-cygwin\$(GCC_VERSION)\include;</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="cab202_graphics.h" />
+    <ClInclude Include="cab202_sprites.h" />
+    <ClInclude Include="cab202_timers.h" />
+    <ClInclude Include="makefile" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="cab202_graphics.c" />
+    <ClCompile Include="cab202_sprites.c" />
+    <ClCompile Include="cab202_timers.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="bumpRev.bash" />
+    <None Include="refresh-files.bash" />
+    <None Include="Worksheet.bash" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
