@@ -445,8 +445,8 @@ void move_player(int key)
 {
     int visible_width = screen_width() - 1;
     int px = sprite_x(player);
-
-    if ( key == 'd' && px < visible_width - 6 && platforms_collide())
+    if (!platforms_collide()) return;
+    if ( key == 'd' && px < visible_width - 6)
     {
         sprite_move( player, 1, 0);
         bitmap = 1;
@@ -455,7 +455,7 @@ void move_player(int key)
             momentum += 0.3;
         }        
     }
-    else if (key == 'a' && px > 0 && platforms_collide())
+    else if (key == 'a' && px > 0)
     {
         sprite_move( player, -1, 0);
         bitmap = 2;
@@ -464,7 +464,7 @@ void move_player(int key)
             momentum += -0.3;
         }
     }
-    else if (key == 'w' && platforms_collide())
+    else if (key == 'w')
     {
         player->dy = -2;
         // Jumping with horizontal velocity moves further than
