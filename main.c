@@ -1,9 +1,9 @@
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>
-#include <cab202_graphics.h>
-#include <cab202_sprites.h>
-#include <cab202_timers.h>
+#include "ZDK/cab202_graphics.h"
+#include "ZDK/cab202_sprites.h"
+#include "ZDK/cab202_timers.h"
 #include <unistd.h>
 
 
