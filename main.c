@@ -492,8 +492,9 @@ void horizonal_movement( void )
 
 void gravity( void )
 {
+    bool is_colliding = platforms_collide();
     // When on block, kill velocity
-    if (platforms_collide() == true)
+    if (is_colliding)
     {
        player->dy = 0;
    }
@@ -513,12 +514,12 @@ void gravity( void )
          player->dy = -player->dy;
     }
     // Else give player falling velocity
-    else if(!platforms_collide() && player->dy == 0.0)
+    else if(!is_colliding && player->dy == 0.0)
     {
         player->dy = 0.01;
     }
     // Apply accumulated 'momentum' to player speed when off block.
-    if(!platforms_collide()){
+    if(!is_colliding){
         player->dx = momentum;
     }
 }
