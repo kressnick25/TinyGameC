@@ -1,77 +1,37 @@
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
 #include <cab202_graphics.h>
 #include <cab202_sprites.h>
 #include <cab202_timers.h>
-#include <math.h>
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 
-#if !defined(ARRAY_SIZE)
-#define ARRAY_SIZE(x) (sizeof((x)) / sizeof((x)[0]))
-#endif
 
-// function used to safely check timers and prevent core dump.
-void show_timer(timer_id timer, Sprite *sprite) {
-    if (timer != NULL) {
-        if (timer_expired(timer)) {
-            sprite_show(sprite);
-        }
-    }
-}
-
-typedef struct platforms {
-    int x;
-    int y;
-    int type;
-} platforms;
-
-typedef struct game_state {
-    bool game_over;
-    double game_start;
-    int lives_remaining;
-    int score;
-    int seconds_past;
-    int block_width;
-    int current_block;
-    int prev_block;
-    int bitmap;
-} game_state;
-
-enum PLATFORM_TYPE {
-    PLATFORM = 0,
-    BAD_PLATFORM = 1,
-    EMPTY_PLATFORM = 2,
-} PLATFORM_TYPE;
-
-platforms platformArray[160];
-game_state state;
-// SPRITES
+////GLOBALS
+//SPRITES
 sprite_id player;
-sprite_id chest;
+sprite_id chest; 
 
 char *player_image =
     " ____ "
     "{_00_}"
     "8____8";
-char *right_image =
-    "  ///]"
+char * right_image = 
+    "  ///]"	
     " //00}"
     "//===]";
-char *left_image =
+char * left_image = 
     "[\\\\\\  "
     "{00\\\\ "
     "[===\\\\\\";
-char *falling_image =
-    "  __  "
-    " /  \\ "
-    "[_00_]";
+char * falling_image = 
+  "  __  "
+  " /  \\ "
+  "[_00_]";
 char *chest_image =
     " ___ "
     "/___\\"
     "[_0_]";
-// TODO better alt sprite art
 char *chest_image_alt =
     " ___ "
     "/#-#\\"
@@ -82,396 +42,592 @@ char *safeBlock_image =
 char *badBlock_image =
     "xxxxxxxxxx"
     "xxxxxxxxxx";
-char *testBlock_image =
-    "9999999999"
-    "9999999999";
 
-// player initial position
+bool game_over = false;
+
+// Scoreboard Variables
+int livesRemaining = 10;
+int score = 0;  
+int secondsPast; 
+double momentum = 0; 
+//Array to store platforms
+sprite_id Platforms[200]; 
+int PlatformArrayLength;
+//Misc variables
+bool alt_chest = false; 
+bool stop_chest = false; 
+int old_block;
+int bitmap = 0; 
+//Timers
+timer_id chest_timer;
+timer_id PlayerStillTimer; 
+timer_id hide_chest_timer; 
 
 ////FUNCTIONS
-// Helper Functions
+///SETUP FUNCTIONS
 
-/// SETUP FUNCTIONS
-void spawn_player(void) { player = sprite_create(2, 0, 6, 3, player_image); }
-void make_chest(void) {
+// Returns a random double floating point number between two values
+double rand_number(double min, double max)
+{ 
+    double range = (max - min);
+    double div = RAND_MAX / range;
+    return min + (rand() / div);
+}
+
+// Draws treasure at specific co-ordinates
+void make_chest( void )
+{
     int chest_x = screen_width() / 2;
     int chest_y = screen_height() - 3;
     chest = sprite_create(chest_x, chest_y, 5, 3, chest_image);
     sprite_turn_to(chest, -0.1, 0);
 }
-// draws a rectangle with defined character/s
 
-int choose_platform_type(void) {
-    int i = rand() % 7;
-    int type;
-    if (i <= 3) {
-        type = PLATFORM;
-    } else if (i == 4) {
-        type = BAD_PLATFORM;
-    } else {
-        type = EMPTY_PLATFORM;
+// Randomly selects a platform type based on probability
+char* choose_platform_type ( void )
+{
+    int i = rand_number(0,8);
+    char* type;
+    if (i <= 3){
+        type = safeBlock_image;
+    }
+    else if (i == 4){
+        type = badBlock_image;
+    }
+    else{
+        type = NULL;
     }
     return type;
 }
-void create_platforms() {
-    int column_spacing = 1;
-    // total number of columns on screen
-    int num_columns =
-        (screen_width() - 1) / (state.block_width + column_spacing);
-    int platformsPerColumn =
-        (screen_height() / (3 + sprite_height(player))) - 1;
-    int init_px = 1;  // first platform x position
-    int init_py = 8;  // first platform y position
 
-    // draw platforms, iterate through each column
-    int deltaX = 0;
-    int c = 1;
-    // make first platform
-    platformArray[0].x = 1;
-    platformArray[0].y = 3;
-    platformArray[0].type = 0;
+// Returns the number of columns for current terminal screen size
+int get_num_columns()
+{
+    int num_columns = (screen_width() - 1) / 10 + 1;
+    return num_columns;
+}
 
-    for (int i = 0; i < num_columns; i++) {
-        int deltaY = 0;  // counter vertical change per block
-        for (int j = 0; j < platformsPerColumn; j++) {
-            // choose what kind of block to draw.
-            int type = choose_platform_type();  // random integer between 0 and
-                                                // 6
+// Returns the number of rows for the current terminal screen size
+int get_num_rows( void )
+{
+    int height = screen_height() - 7;
+    int row_spacing = 9;    
+    int num_rows = height / row_spacing;
+    return num_rows;
+}
 
-            platformArray[c].x = init_px + deltaX;
-            platformArray[c].y = init_py + deltaY;
-            platformArray[c].type = type;
-            // TODO platform spacing
-            deltaY += 3 + sprite_height(player);  // add vertical height of
-                                                  // block plus hero_height + 2
-            c++;
+// Returns a sprite_id for a new platform with set input paramenters
+sprite_id setup_platform(int px, int py, int width, double dx, char* bitmap){
+    sprite_id new_platform = sprite_create( px, py, width, 2, bitmap );
+    sprite_turn_to(new_platform, dx, 0);
+    return new_platform;
+}
+
+// Create platform co-ordinates, length, width, bitmap, dx and store in array
+void create_platforms( void ) {
+    memset(Platforms, 0, sizeof Platforms);
+    int num_rows = get_num_rows();
+    int row_spacing = 9;
+    int initX = 1, initY = 11;
+    int deltaY = 0;
+    int c = 0;
+    int k = 1;
+    for (int i = 0; i < num_rows; i++)
+    {
+        int deltaX = 0;
+        // Choose a random platform speed, alternating direction
+        k = -k;
+        double speed = rand_number(0.01, 0.1);
+        double block_speed = speed * k;
+        int num_columns = get_num_columns();
+        for (int j = 0; j <= num_columns; j++)
+        {
+            // Choose which type of block to draw
+            char *bitmap = choose_platform_type();
+            int width = 10;
+            // store block information in array.
+            if (bitmap != NULL && c < 200)
+            {
+                // Choose a random width between 5 and 10
+                width = rand_number(5, 10);
+                // If drawing first or last row, set row speed to 0.
+                if (i == 0 || i + 1 == num_rows)
+                {
+                    block_speed = 0;
+                }
+                Platforms[c] = setup_platform(initX + deltaX, initY + deltaY, 
+                                                width, block_speed, bitmap);
+                deltaX += width + 1;
+            }
+            else{
+                // If not drawing a block, add space between blocks.
+                deltaX += width + 1;
+            }
+            c++; 
         }
-        deltaX += state.block_width + 1;
+        deltaY += row_spacing;
+    }
+    // Set global variable of Array Length.
+    PlatformArrayLength = sizeof(Platforms)/sizeof(Platforms[0]);
+}
+
+// From Array of platforms, draw platforms on screen
+void draw_platforms( void )
+{
+    for (int j = 0; j < PlatformArrayLength; j++){
+        if (Platforms[j] != NULL){ 
+            sprite_draw(Platforms[j]);
+        }
     }
 }
 
-void draw_platforms(void) {
-    int array_values = 0;
-    for (int j = 0; j < ARRAY_SIZE(platformArray); j++) {
-        if (platformArray[j].x != 0) {
-            array_values++;
-        }
+// Checks wich blocks in the top row are safe blocks
+// Randomly chooses and returns one of the safe blocks
+sprite_id choose_safe_block()
+{
+    int i = rand_number(0, get_num_columns());
+    while(Platforms[i] == NULL || Platforms[i]->bitmap != safeBlock_image)
+    {
+        i = rand_number(0, get_num_columns());
     }
-
-    for (int i = 0; i < ARRAY_SIZE(platformArray); i++) {
-        int type = platformArray[i].type;
-        int px = platformArray[i].x;
-        int py = platformArray[i].y;
-        if (type == PLATFORM) {
-            sprite_id block =
-                sprite_create(px, py, state.block_width, 2, safeBlock_image);
-            sprite_draw(block);
-        } else if (type == BAD_PLATFORM) {
-            sprite_id block =
-                sprite_create(px, py, state.block_width, 2, badBlock_image);
-            sprite_draw(block);
-        }
-        // DEBUGGING uncomment to show empty platforms
-        /**else if (type == 2){
-            sprite_id block = sprite_create( platformArray[i].x,
-        platformArray[i].y, block_width, 2, testBlock_image);
-            sprite_draw(block);
-        }**/
-    }
+    return Platforms[i];    
 }
 
-void draw_scoreboard(void) {
-    int mx = screen_width() / 2;
+// Initial player spawn function
+void spawn_player( void )
+{
+    sprite_id safe_block = choose_safe_block();
+    player = sprite_create( safe_block->x, safe_block->y - 3, 6, 3, player_image );
+}
+
+// Draws status display bar at top of screen
+// Updates when score, lives and time changes
+void draw_scoreboard( void )
+{
+    int mx = screen_width() - 50;
     int my = 1;
-    int minutes = (state.seconds_past / 60) % 60;
-    int seconds = state.seconds_past % 60;
-
-    // draw text/content of scoreboard
-    draw_line(mx - 2, 0, mx - 2, 2, '|');
+    int minutes = (secondsPast /60) % 60;
+    int seconds = secondsPast % 60;
+     // draw text/content of scoreboard
+    draw_line(mx - 2, 0, mx - 2, 3, '|');
     draw_formatted(mx, my, "n9467688 |");
-    draw_formatted(mx + 11, my, "Lives: %d |", state.lives_remaining);
-    draw_formatted(mx + 23, my, "Score: %d", state.score);
-    draw_formatted(mx + 34, my, "| %02u:%02u", minutes, seconds);
-    draw_line(mx - 1, 2, screen_width(), 2, '~');
+    draw_formatted(mx + 11, my, "Lives: %d |", livesRemaining );
+    draw_formatted(mx + 23, my, "Score: %d", score);
+    draw_formatted(mx + 34, my,"| %02u:%02u", minutes, seconds); 
+    draw_line(mx -1, 3, screen_width(), 3, '~');
+
+}
+
+// Move platforms according to set dx.
+// Moves platform to opposite side of screen when it reaches the edge
+void auto_move_platforms( void )
+{
+    for (int i = 0; i < PlatformArrayLength; i ++){
+        if (Platforms[i] != NULL){ // Do not attempt to call empty value
+            sprite_step(Platforms[i]);
+            int px = Platforms[i]->x;
+            int py = Platforms[i]->y;
+            if (px + 10 < 0){ // Screen LHS
+                sprite_move_to(Platforms[i], screen_width() - 1, py);
+            }
+            else if(px > screen_width()){ // Screen RHS
+                sprite_move_to(Platforms[i], 0 - 10, py);
+            }
+        }
+    }
 }
 
 /// PROCESS FUNCTIONS
-void die(void) {
-    sprite_destroy(player);
-    spawn_player();
-    state.lives_remaining--;
-    if (state.lives_remaining == 0) {
-        state.game_over = true;
+
+// Increases the timer displayed in status display
+void increase_timer(double game_start)
+{   
+    double time_past = get_current_time() - game_start;
+    secondsPast = time_past;
+}
+
+// Called when player collides with forbidden block or moves out of bounds
+// Pauses the game momentarily, resets player to safe block in starting row
+void die ( void )
+{   
+    timer_pause(1000);
+    sprite_hide(player);
+    create_platforms();
+    //reset player variables
+    sprite_turn_to(player, 0, 0);
+    //choose safe platform to move to
+    sprite_id safe_block = choose_safe_block();
+    sprite_move_to(player, safe_block->x, safe_block->y - 3);
+    player->dx = 0;
+    player->dy = 0;
+    momentum = 0;
+    sprite_show(player);
+    livesRemaining--;
+    if (livesRemaining == 0)
+    {
+        game_over = true;
     }
 }
 
-bool alt_chest = false;
-bool stop_chest = false;
-void move_chest(int key) {
-    // using code from topic 4 zdj,
-    if (key == 't') {
-        stop_chest = !stop_chest;
-    }
-    if (!stop_chest) {
-        sprite_step(chest);
-        // altnernate chest image to animate chest
-        // TODO slow down animation.
-        if (alt_chest) {
+// Alternates chest bitmap between two images
+void animate_chest( void )
+{
+    if(chest_timer != NULL && timer_expired(chest_timer))
+    {
+        if (alt_chest)
+        {
             chest->bitmap = chest_image_alt;
-        } else {
+        }
+        else
+        {
             chest->bitmap = chest_image;
         }
         alt_chest = !alt_chest;
+        create_timer(500);
     }
-    int cx = round(sprite_x(chest));
-    double cdx = sprite_dx(chest);
-    if (cx == 0 || cx == screen_width() - sprite_width(chest)) {
+    if (chest_timer == NULL)
+    {
+        chest_timer = create_timer(500);
+    }
+}
+
+// Moves chest along bottom of screen
+void move_chest( int key)
+{
+    // Uses code from ZDJ Topic 04
+    // Toggle chest movement when 't' pressed.
+    if (key == 't')
+    {
+        stop_chest = !stop_chest;
+    }
+    if (!stop_chest)
+    {
+        sprite_step(chest);
+        animate_chest();
+    }
+    // Change direction when wall hit
+    int cx = round( sprite_x( chest ) );
+    double cdx = sprite_dx( chest );
+    if ( cx == 0 || cx == screen_width() - sprite_width( chest ) ){
         cdx = -cdx;
     }
-    if (cdx != sprite_dx(chest)) {
-        sprite_back(chest);
-        sprite_turn_to(chest, cdx, 0);
+    if ( cdx != sprite_dx( chest ) ){
+        sprite_back( chest );
+        sprite_turn_to( chest, cdx, 0 );
     }
 }
 
-void update_current_block(int current_idx) {
-    state.prev_block = state.current_block;
-    state.current_block = current_idx;
+// Increases score only when player moves to or lands on a new safe block
+void increase_score(int new_block)
+{
+    if(old_block != new_block)
+    {
+        score++;
+    }
+    old_block = new_block;
 }
 
-/* Get the current position var of a sprit
- *  Returns:    0 == safe block
- *              1 == illegal block
- *              2 == not on block
- */
-int get_current_position(sprite_id sprite) {
-    int sprite_Y_adjusted = sprite_y(sprite) + sprite_height(sprite);
-    int return_val = 2;
-    int i;
-    for (i = 0; i < ARRAY_SIZE(platformArray); i++) {
-        int platform_x = platformArray[i].x;
-        int platform_y = platformArray[i].y;
-        int ptype = platformArray[i].type;
+// Checks collision between two sprites on a pixel level
+bool pixel_level_collision( Sprite *s1, Sprite *s2 )
+{       // Uses code from AMS wk5.
+        // Only check bottom of player model, stops player getting stuck in blocks.
+    int y = round(s1->y + 2);
+    for (int x = s1->x; x < s1->x + sprite_width(s1); x++){
+        // Get relevant values of from each sprite
+        int sx1 = x - round(s1->x);
+        int sy1 = y - ceil(s1->y);
+        int offset1 = sy1 * s1->width + sx1;
 
-        // On bad block
-        if (platform_y == sprite_Y_adjusted &&
-            sprite->x + sprite_width(sprite) >= platform_x &&
-            sprite->x + sprite_width(sprite) <=
-                platform_x + state.block_width &&
-            ptype == BAD_PLATFORM) {
-            return_val = 1;
-            break;
-        }
-        // On bad block
-        else if (platform_y == sprite_Y_adjusted && sprite->x >= platform_x &&
-                 sprite->x <= platform_x + state.block_width &&
-                 ptype == BAD_PLATFORM) {
-            return_val = 1;
-            break;
-        }
-        // Sprite is off screen
-        if (sprite_Y_adjusted == screen_height() + 6 || sprite_y(sprite) < 0) {
-            return_val = 1;
-            break;
-        }
-        // Sprite is on regular block
-        if (platform_y == sprite_Y_adjusted && sprite->x > platform_x &&
-            sprite->x <= platform_x + state.block_width &&
-            ptype != EMPTY_PLATFORM) {
-            return_val = 0;
-            break;
-        } else if (platform_y == sprite_Y_adjusted &&
-                   sprite->x + sprite_width(sprite) >= platform_x &&
-                   sprite->x + sprite_width(sprite) <=
-                       platform_x + state.block_width &&
-                   ptype != EMPTY_PLATFORM) {
-            return_val = 0;
-            break;
+        int sx2 = x - round(s2->x);
+        int sy2 = y - round(s2->y-1);
+        int offset2 = sy2 * s2->width + sx2;
+        
+        // If opaque at both points, collisio has occured
+        if (0 <= sx1 && sx1 < s1->width &&
+            0 <= sy2 && sy1 < s1->height &&
+            s1->bitmap[offset1] != ' ')
+            {
+            if (0 <= sx2 && sx2 < s2->width &&
+                0 <= sy2 && sy2 < s2->height && 
+                s2->bitmap[offset2] != ' ')
+                {
+                return true;
+            }
         }
     }
-    update_current_block(i);
-
-    return return_val;
+    return false;
 }
 
-bool collision() {
-    int i = get_current_position(player);
-    if (i == 1) {
+// Checks for collision between the player and each block 'Platforms' array
+bool platforms_collide( void ) 
+{
+    bool output = false;
+    int c = 0;
+    for (int i = 0; i < PlatformArrayLength; i++){
+        if(Platforms[i] != NULL)    // Do not check empty platforms
+        { 
+            bool collide = pixel_level_collision(player, Platforms[i]);
+            if (collide)
+            {
+                if(Platforms[i]->bitmap == badBlock_image){
+                    die();
+                    output = true;
+                    break;
+                }
+                else
+                {   // Die if any part of current block is off screen
+                    if(Platforms[i]->x > screen_width() - Platforms[i]->width ||
+                        Platforms[i]->x < 0){
+                        die();
+                    }
+                    // Update player speed so that player moves with platform on
+                    player->dx = sprite_dx(Platforms[i]);
+                    output = true;
+                    if (c == 0){
+                        c = i;
+                    }
+                }
+            }
+        } 
+    }
+    if (output == true){
+        increase_score(c);
+    }
+    return output;
+}
+
+// Cause the player to die if moved out of bounds to left, right or bottom of screen
+void check_out_of_bounds( void )
+{
+    if (player->y >= screen_height() + 6 || 
+        player->x + sprite_width(player) < 0 || 
+        player->x > screen_width())
+        {
         die();
-        return false;
-    }
-    if (i == 0) {
-        return true;
-    } else {
-        return false;
-    }
+    }     
 }
 
-void increase_score() {
-    // Don't increase score until player moves to new block
-    if (collision() && state.current_block != state.prev_block) {
-        state.score += 10;
-    }
-}
-
-timer_id still;
-void animate_player() {
-    if (still != NULL) {
-        if (timer_expired(still)) {
-            player->bitmap = player_image;
-        }
-    }
-    if (state.bitmap == 1) {
+// Changes the player model/image based on the last key pressed.
+// Holds the image for certain time after button stopped pressed to prevent flickering
+void animate_player( void )
+{
+    if (bitmap == 1)
+    {
         player->bitmap = right_image;
-        if (still != NULL) {
-            destroy_timer(still);
-        }
-        still = create_timer(100);
-    } else if (state.bitmap == 2) {
+        PlayerStillTimer = create_timer(150);
+        bitmap = 0;
+    }
+    else if (bitmap == 2)
+    {
         player->bitmap = left_image;
-        if (still != NULL) {
-            destroy_timer(still);
+        PlayerStillTimer = create_timer(150);
+        bitmap = 0;
+    }
+    else if (bitmap == 3)
+    {
+        player->bitmap = falling_image;
+        PlayerStillTimer = create_timer(150);
+        bitmap = 0;
+    }
+    // Also reset player momentum if no keys pressed for long enough
+    if (PlayerStillTimer != NULL)
+    {
+        if (timer_expired(PlayerStillTimer) == true && platforms_collide())
+        {
+            player->bitmap = player_image;
+            momentum = 0;
         }
-        still = create_timer(100);
-    } else if (state.bitmap == 0) {
-        player->bitmap = player_image;
     }
 }
-void move_player(int key) {
+
+// Moves player according to key pressed
+void move_player(int key)
+{
     int visible_width = screen_width() - 1;
-    // int visible_height = screen_width()- 1;
     int px = sprite_x(player);
-    // int py = sprite_y(player);
-    if (key == 'd' && px < visible_width - 6 && collision()) {
-        sprite_move(player, 1, 0);
-        state.bitmap = 1;
-    } else if (key == 'a' && px > 0 && collision()) {
-        sprite_move(player, -1, 0);
-        state.bitmap = 2;
-    } else if (key == 'z') {
-        die();
+
+    if ( key == 'd' && px < visible_width - 6 && platforms_collide())
+    {
+        sprite_move( player, 1, 0);
+        bitmap = 1;
+        if (momentum < 0.4)
+        {
+            momentum += 0.3;
+        }        
     }
-    animate_player();
+    else if (key == 'a' && px > 0 && platforms_collide())
+    {
+        sprite_move( player, -1, 0);
+        bitmap = 2;
+        if (momentum > -0.4)
+        {
+            momentum += -0.3;
+        }
+    }
+    else if (key == 'w' && platforms_collide())
+    {
+        player->dy = -2;
+        // Jumping with horizontal velocity moves further than
+        // falling with horizontal velocity
+        if (momentum != 0)
+        { 
+            momentum *= 1.5;
+        }
+    }
 }
 
-void apply_gravity() {
-    bool collide = collision();
-    if (!collide) {
-        sprite_move(player, 0, 0.2);
+// Decays momentum to allow for distance control over jumps
+void horizonal_movement( void )
+{
+    if (momentum != 0 && platforms_collide()){
+        if (momentum > 0 && momentum < 0.5){
+            momentum -= 0.05;
+        }
+        else if (momentum > -0.5 && momentum < 0){
+            momentum += 0.05;
+        }
     }
 }
 
-timer_id hide_chest;
-// uses code from my own ams_wk5 task 3 solution
-void chest_collide() {
-    int px = sprite_x(player);
-    int py = sprite_y(player) + sprite_height(player);
-    int pw = sprite_width(player) + sprite_x(player);
 
-    int cx = sprite_x(chest);
-    int cw = sprite_width(chest) + sprite_x(chest);
-    int h = screen_height();
-
-    if (py >= h && py <= h + 3 && px >= cx && px <= cw) {
-        state.lives_remaining += 3;
-        hide_chest = create_timer(2000);
-        sprite_hide(chest);
-        die();
-    } else if (py >= h && py <= h + 3 && pw >= cx && pw <= cw) {
-        state.lives_remaining += 3;
-        hide_chest = create_timer(2000);
-        sprite_hide(chest);
-        die();
+void gravity( void )
+{
+    // When on block, kill velocity
+    if (platforms_collide() == true)
+    {
+       player->dy = 0;
+   }
+    // When jumping, half velocity each step
+    else if(player->dy <= -0.01)
+    {
+        player->dy *= 0.3;
     }
-    show_timer(hide_chest, chest);
+    // When falling (negative velocity) double velocity
+    else if (player->dy > 0 && player->dy < 0.8)
+    {
+        player->dy *= 1.3;
+    }
+    // When jump peak reached, flip velocity to negative
+    else if(player->dy > -0.2 && player->dy < 0)
+    {
+         player->dy = -player->dy;
+    }
+    // Else give player falling velocity
+    else if(!platforms_collide() && player->dy == 0.0)
+    {
+        player->dy = 0.01;
+    }
+    // Apply accumulated 'momentum' to player speed when off block.
+    if(!platforms_collide()){
+        player->dx = momentum;
+    }
 }
 
-void draw_game_over_screen() {
+// Checks for player collision with chest, hides chest upon collision
+void chest_collide( void )
+{ 
+    bool collide = pixel_level_collision(player, chest);
+    if (collide)
+    {
+        livesRemaining += 3;
+        hide_chest_timer = create_timer(2000);
+        //sprite_hide(chest);
+        // move chest off screen, can't collide with player
+        // todo destroy sprite
+
+        die();
+    }
+}
+
+
+// Game over screen displayed when player loses all lives
+void game_over_screen( void )
+{
     clear_screen();
     int tx = screen_width() / 2 - 5;
-    int ty = screen_height() / 2 - 3;
-    const int minutes = (state.seconds_past / 60) % 60;
-    const int seconds = state.seconds_past % 60;
-    draw_formatted(tx, ty, " game over");
-    draw_formatted(tx, ty + 1, " Score: %d", state.score);
-    draw_formatted(tx, ty + 2, "Time:  %02u:%02u", minutes, seconds);
-    draw_formatted(tx, ty + 3, "press r to restart or");
-    draw_formatted(tx, ty + 4, "press q to quit");
+    int ty = screen_height() / 2 - 5;
+    const int minutes = (secondsPast /60) % 60;
+    const int seconds = secondsPast % 60;
+    // Draw text in middle of screen
+    draw_formatted(tx, ty, " Game Over");
+    draw_formatted(tx, ty+1, " Score: %d", score);
+    draw_formatted(tx, ty+2, "Time:  %02u:%02u", minutes, seconds);
+    draw_formatted(tx - 3, ty+3, "Press 'r' to restart");
+    draw_formatted(tx + 5, ty + 4, "or");
+    draw_formatted(tx - 2, ty + 5, "Press 'q' to quit");
     show_screen();
-
-    // Show screen unil user quit or restart
-    while (true) {
+    bool yes = true;
+    // Allow player to restart game or exit gracefully
+    while(yes){
         int key = get_char();
-        if (key == 'q') {
+        if (key == 'q'){
             exit(0);
-        } else if (key == 'r') {
-            state.game_over = false;
-            break;
+        }
+        else if (key == 'r'){
+            game_over = false;
+            yes = false;
         }
         show_screen();
     }
 }
 
-void draw_all(void) {
-    clear_screen();
+
+// Draw all sprites in new positions
+void draw_all( void )
+{
     sprite_draw(chest);
     sprite_draw(player);
     draw_platforms();
     draw_scoreboard();
-    show_screen();
 }
 
-//// PROCESS
-void process(void) {
-    int key = get_char();
-    move_player(key);
-    move_chest(key);
-    increase_score();
-    apply_gravity();
-    chest_collide();
-    draw_all();
-}
-
-int main(void) {
-    // SETUP
-
-    // init game state
-    state.game_over = false;
-    // Scoreboard Variables init
-    state.lives_remaining = 10;
-    state.score = 0;
-    // state.seconds_past;
-    state.block_width = 10;
-    state.game_start = get_current_time();
-    state.bitmap = 0;  // 0 == still, 1 = right, 2 = left, 3 = falling.
-
-    // seed rand() so no the same platforms every time.
-    srand(state.game_start);
-    setup_screen();  // ZDK fn
-
+//// SETUP
+void setup(void)
+{
     // setup initial screen here
-    state.lives_remaining = 10;
-    state.score = 0;
+    livesRemaining = 10;
+    score = 0;
     make_chest();
+    create_platforms();
     spawn_player();
-    create_platforms(platformArray);
     draw_all();
-    show_screen();
+    
+}
 
-    // GAME LOOP
-    while (!state.game_over) {
-        process();
-        // increase timer
-        double time_past = get_current_time() - state.game_start;
-        state.seconds_past = time_past;
+
+//// MAIN
+int main( void )
+{  
+    while (true){ 
+        // Seed rand() so not the same platforms every time
+        srand(get_current_time());
+        // Get time at start of game for timekeeping
+        double game_start = get_current_time();
+        setup_screen();
+        setup();
         show_screen();
-        timer_pause(10);
+
+        while (!game_over)
+        {
+            clear_screen();
+            chest_collide(); 
+            gravity();
+            int key = get_char();
+            move_player(key); 
+            animate_player();
+            move_chest(key);
+            sprite_step(player); 
+            auto_move_platforms();
+            check_out_of_bounds();
+            draw_all();
+            increase_timer(game_start);
+            show_screen();
+            fflush(stdin); //flush buffer.
+            timer_pause(10);
+        }
+
+        game_over_screen();
     }
-    draw_game_over_screen();
-    main();
 
     return 0;
 }
-
-// USE DRAW_FORMATTED
-// TO CHANGE ANIMATION -- change sprite[spritename]->bitmap.
