@@ -7,118 +7,13 @@
 #include "ZDK/cab202_sprites.h"
 #include "ZDK/cab202_timers.h"
 #include <unistd.h>
+#include "state.h"
 
-const int GAMESTATE_INITIAL_LIVES = 3;
-const float PLAYERSTATE_INITIAL_MOMENTUM = 0;
-const int PLAYERSTATE_INITIAL_BITMAP = 0;
-
-typedef struct Scoreboard {
-    int score;
-    int secondsPast;
-} Scoreboard;
-
-Scoreboard* init_scoreboard (void) {
-    Scoreboard* temp = malloc(sizeof(Scoreboard));
-    
-    temp->score = 0;
-    temp->secondsPast = 0;
-
-    return temp;
-}
-
-void destroy_scoreboard(Scoreboard* s) {
-    free(s);
-}
-
-typedef struct Gamestate {
-    bool game_over;
-    int livesRemaining;
-} Gamestate;
-
-Gamestate* init_gamestate (int lives) {
-    assert(lives > 0);
-
-    Gamestate* temp = malloc(sizeof(Gamestate));
-
-    temp->game_over = false;
-    temp->livesRemaining = lives;
-
-    return temp;
-}
-
-void destroy_gamestate(Gamestate* s) {
-    free(s);
-}
-
-typedef struct Playerstate {
-    sprite_id player_sprite;
-    float momentum;
-    int old_block;
-    int bitmap;
-    timer_id PlayerStillTimer;
-} Playerstate;
-
-sprite_id create_player(void);
-Playerstate* init_playerstate(double momentum, int bitmap);
-
-void destroy_playerstate(Playerstate* state) {
-    sprite_destroy(state->player_sprite);
-    destroy_timer(state->PlayerStillTimer);
-    free(state);
-}
-
-typedef struct Cheststate {
-    sprite_id chest_sprite;
-    bool alt_chest;
-    bool stop_chest;
-    timer_id chest_timer;
-    timer_id hide_chest_timer; 
-} Cheststate;
-
-sprite_id make_chest(void);
-
-Cheststate* init_cheststate(void) {
-    Cheststate* temp = malloc(sizeof(Cheststate));
-    
-    temp->chest_timer = create_timer(500);
-    temp->chest_sprite = make_chest();
-    temp->alt_chest = false;
-    temp->stop_chest = false;
-
-    return temp;
-}
-
-void destroy_cheststate(Cheststate* state) {
-    sprite_destroy(state->chest_sprite);
-    destroy_timer(state->chest_timer);
-    free(state);
-}
-
-typedef struct State {
-    Scoreboard* scoreboard;
-    Gamestate* gamestate;
-    Playerstate* playerstate;
-    Cheststate* cheststate;
-} State;
-
-State* init_state() {
-    State* temp = malloc(sizeof(State));
-
-    temp->scoreboard = init_scoreboard();
-    temp->gamestate = init_gamestate(GAMESTATE_INITIAL_LIVES);
-    temp->playerstate = init_playerstate(PLAYERSTATE_INITIAL_MOMENTUM, PLAYERSTATE_INITIAL_BITMAP);
-    temp->cheststate = init_cheststate();
-    
-    return temp;
-}
-
-void destroy_state(State* s) {
-    destroy_scoreboard(s->scoreboard);
-    destroy_gamestate(s->gamestate);
-    destroy_playerstate(s->playerstate);
-    destroy_cheststate(s->cheststate);
-    free(s);
-}
+const InitialState initialstate = {
+    .lives = 10,
+    .momentum = 0.0,
+    .bitmap = 0,
+};
 
 State* state;
 sprite_id Platforms[200]; 
@@ -165,7 +60,7 @@ double rand_number(double min, double max)
 }
 
 // Draws treasure at specific co-ordinates
-sprite_id make_chest( void )
+sprite_id chest_create( void )
 {
     int chest_x = screen_width() / 2;
     int chest_y = screen_height() - 3;
@@ -293,16 +188,16 @@ sprite_id choose_safe_block()
 }
 
 // Initial player spawn function
-sprite_id create_player( void )
+sprite_id player_create( void )
 {
     sprite_id safe_block = choose_safe_block();
     return sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
 }
 
-Playerstate* init_playerstate(double momentum, int bitmap) {
+Playerstate* playerstate_create(double momentum, int bitmap) {
     Playerstate* temp = malloc(sizeof(Playerstate));
 
-    temp->player_sprite = create_player();
+    temp->player_sprite = player_create();
     temp->momentum = momentum;
     temp->old_block = 0;
     temp->bitmap = bitmap;
@@ -698,13 +593,13 @@ void setup(void)
 {
     // setup initial screen here
     create_platforms();
-    state = init_state();
+    state = state_create(initialstate);
     draw_all();
     
 }
 
 void cleanup(void) {
-    destroy_state(state);
+    state_destroy(state);
     destroy_platforms();
 }
 
