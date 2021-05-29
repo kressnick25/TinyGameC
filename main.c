@@ -199,6 +199,7 @@ Playerstate* playerstate_create(sprite_id platforms[], double momentum, int bitm
     temp->momentum = momentum;
     temp->old_block = 0;
     temp->bitmap = bitmap;
+    temp->dead = false;
     
     return temp;
 }
@@ -254,6 +255,10 @@ void increase_timer(Scoreboard* scoreboard, double game_start)
     scoreboard->secondsPast = time_past;
 }
 
+void setDead(Playerstate* playerstate) {
+    playerstate->dead = true;
+}
+
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
 void die (State* state, sprite_id platforms[])
@@ -272,6 +277,7 @@ void die (State* state, sprite_id platforms[])
     state->playerstate->momentum = 0;
     sprite_show(state->playerstate->player_sprite);
     state->gamestate->livesRemaining--;
+    state->playerstate->dead = false;
     if (state->gamestate->livesRemaining == 0)
     {
         state->gamestate->game_over = true;
@@ -374,7 +380,7 @@ bool platforms_collide(Playerstate* playerstate, sprite_id* Platforms, int a_siz
             if (collide)
             {
                 if(Platforms[i]->bitmap == badBlock_image){
-                    //TODO die
+                    setDead(playerstate);
                     output = true;
                     break;
                 }
@@ -382,7 +388,7 @@ bool platforms_collide(Playerstate* playerstate, sprite_id* Platforms, int a_siz
                 {   // Die if any part of current block is off screen
                     if(Platforms[i]->x > screen_width() - Platforms[i]->width ||
                         Platforms[i]->x < 0){
-                        // TODO die
+                        setDead(playerstate);
                     }
                     // Update player speed so that player moves with platform on
                     playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
@@ -407,7 +413,7 @@ void check_out_of_bounds(Playerstate* playerstate)
         playerstate->player_sprite->x + sprite_width(playerstate->player_sprite) < 0 || 
         playerstate->player_sprite->x > screen_width())
         {
-        // TODO DIE
+        setDead(playerstate);
     }     
 }
 
@@ -539,7 +545,7 @@ void chest_collide(State* state)
         // move chest off screen, can't collide with player
         // todo destroy sprite
 
-        // TODO die
+        setDead(state->playerstate);
     }
 }
 
@@ -615,6 +621,9 @@ int main( void )
         show_screen();
         while (!state->gamestate->game_over)
         {
+            if (state->playerstate->dead) {
+                die(state, platforms);
+            }
             bool is_colliding = platforms_collide(state->playerstate, platforms, A_SIZE);
             clear_screen();
             chest_collide(state); 
