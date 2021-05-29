@@ -2,12 +2,15 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #include <sys/resource.h>
 #include "ZDK/cab202_graphics.h"
 #include "ZDK/cab202_sprites.h"
 #include "ZDK/cab202_timers.h"
 #include <unistd.h>
 #include "state.h"
+
+#define A_SIZE 200
 
 const InitialState initialstate = {
     .lives = 10,
@@ -46,10 +49,6 @@ char *safeBlock_image =
 char *badBlock_image =
     "xxxxxxxxxx"
     "xxxxxxxxxx";
-
-int len(void* array) {
-    return sizeof(*array)/sizeof(array[0]);
-}
 
 // Returns a random double floating point number between two values
 double rand_number(double min, double max)
@@ -110,8 +109,9 @@ sprite_id setup_platform(int px, int py, int width, double dx, char* bitmap){
 }
 
 // Create platform co-ordinates, length, width, bitmap, dx and store in array
+// a pointer to an array of spride ids
 void create_platforms(sprite_id* Platforms) {
-    memset(Platforms, 0, sizeof *Platforms);
+    // memset(Platforms, 0, 200 * sizeof(sprite_id));
     int num_rows = get_num_rows();
     int row_spacing = 9;
     int initX = 1, initY = 11;
@@ -132,7 +132,7 @@ void create_platforms(sprite_id* Platforms) {
             char *bitmap = choose_platform_type();
             int width = 10;
             // store block information in array.
-            if (bitmap != NULL && c < 200)
+            if (bitmap != NULL && c < A_SIZE)
             {
                 // Choose a random width between 5 and 10
                 width = rand_number(5, 10);
@@ -155,8 +155,8 @@ void create_platforms(sprite_id* Platforms) {
     }
 }
 
-void destroy_platforms(sprite_id* Platforms) {
-    for(int i = 0; i < len(Platforms); i++) {
+void destroy_platforms(sprite_id Platforms[], int a_size) {
+    for(int i = 0; i < a_size; i++) {
         if (Platforms[i] != NULL) {
             free(Platforms[i]);
         }
@@ -164,9 +164,9 @@ void destroy_platforms(sprite_id* Platforms) {
 }
 
 // From Array of platforms, draw platforms on screen
-void draw_platforms(sprite_id* Platforms)
+void draw_platforms(sprite_id Platforms[], int a_size)
 {
-    for (int j = 0; j < len(Platforms); j++){
+    for (int j = 0; j < a_size; j++){
         if (Platforms[j] != NULL){ 
             sprite_draw(Platforms[j]);
         }
@@ -175,7 +175,7 @@ void draw_platforms(sprite_id* Platforms)
 
 // Checks wich blocks in the top row are safe blocks
 // Randomly chooses and returns one of the safe blocks
-sprite_id choose_safe_block(sprite_id* Platforms)
+sprite_id choose_safe_block(sprite_id Platforms[])
 {
     int i = rand_number(0, get_num_columns());
     while(Platforms[i] == NULL || Platforms[i]->bitmap != safeBlock_image)
@@ -186,13 +186,13 @@ sprite_id choose_safe_block(sprite_id* Platforms)
 }
 
 // Initial player spawn function
-sprite_id player_create(sprite_id* platforms)
+sprite_id player_create(sprite_id platforms[])
 {
     sprite_id safe_block = choose_safe_block(platforms);
     return sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
 }
 
-Playerstate* playerstate_create(sprite_id* platforms, double momentum, int bitmap) {
+Playerstate* playerstate_create(sprite_id platforms[], double momentum, int bitmap) {
     Playerstate* temp = malloc(sizeof(Playerstate));
 
     temp->player_sprite = player_create(platforms);
@@ -228,9 +228,9 @@ void draw_scoreboard(Gamestate* gamestate, Scoreboard* scoreboard)
 
 // Move platforms according to set dx.
 // Moves platform to opposite side of screen when it reaches the edge
-void auto_move_platforms(sprite_id* Platforms)
+void auto_move_platforms(sprite_id* Platforms, int a_size)
 {
-    for (int i = 0; i < len(Platforms); i ++){
+    for (int i = 0; i < a_size; i ++){
         if (Platforms[i] != NULL){ // Do not attempt to call empty value
             sprite_step(Platforms[i]);
             int px = Platforms[i]->x;
@@ -256,12 +256,12 @@ void increase_timer(Scoreboard* scoreboard, double game_start)
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
-void die (State* state, sprite_id* platforms)
+void die (State* state, sprite_id platforms[])
 {   
     timer_pause(1000);
     sprite_hide(state->playerstate->player_sprite);
-    destroy_platforms(platforms);
-    create_platforms(platforms);
+    // destroy_platforms(platforms); TODO renable new platforms
+    // create_platforms(platforms); TODO renable new platforms
     //reset player variables
     sprite_turn_to(state->playerstate->player_sprite, 0, 0);
     //choose safe platform to move to
@@ -363,11 +363,11 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 }
 
 // Checks for collision between the player and each block 'Platforms' array
-bool platforms_collide(Playerstate* playerstate, sprite_id* Platforms) 
+bool platforms_collide(Playerstate* playerstate, sprite_id* Platforms, int a_size) 
 {
     bool output = false;
     int c = 0;
-    for (int i = 0; i < len(Platforms); i++){
+    for (int i = 0; i < a_size; i++){
         if(Platforms[i] != NULL)    // Do not check empty platforms
         { 
             bool collide = pixel_level_collision(playerstate->player_sprite, Platforms[i]);
@@ -577,37 +577,34 @@ void game_over_screen(State* state)
 
 
 // Draw all sprites in new positions
-void draw_all(State* state, sprite_id* platforms)
+void draw_all(State* state, sprite_id platforms[])
 {
     sprite_draw(state->cheststate->chest_sprite);
     sprite_draw(state->playerstate->player_sprite);
-    draw_platforms(platforms);
+    draw_platforms(platforms, A_SIZE);
     draw_scoreboard(state->gamestate, state->scoreboard);
 }
 
-//// SETUP
-// #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-// #pragma GCC diagnostic ignored "-Wuninitialized"
-void setup(State** state, sprite_id* platforms)
+void setup(State** state, sprite_id platforms[])
 {
-    // setup initial screen here
     create_platforms(platforms);
     *state = state_create(initialstate, platforms);
     draw_all(*state, platforms);
     
 }
 
-void cleanup(State* state, sprite_id* platforms) {
+void cleanup(State* state, sprite_id *platforms) {
     state_destroy(state);
-    destroy_platforms(platforms);
+    destroy_platforms(platforms, A_SIZE);
 }
+
 
 //// MAIN
 int main( void )
 {  
-    State* state;
-    sprite_id platforms[200]; 
-
+    State *state = NULL;
+    sprite_id* platforms = malloc(A_SIZE * sizeof(sprite_id));
+    
     while (true){ 
         // Seed rand() so not the same platforms every time
         srand(get_current_time());
@@ -618,7 +615,7 @@ int main( void )
         show_screen();
         while (!state->gamestate->game_over)
         {
-            bool is_colliding = platforms_collide(state->playerstate, platforms);
+            bool is_colliding = platforms_collide(state->playerstate, platforms, A_SIZE);
             clear_screen();
             chest_collide(state); 
             gravity(state->playerstate, is_colliding);
@@ -627,7 +624,7 @@ int main( void )
             animate_player(state->playerstate, is_colliding);
             move_chest(state->cheststate, key);
             sprite_step(state->playerstate->player_sprite); 
-            auto_move_platforms(platforms);
+            auto_move_platforms(platforms, A_SIZE);
             check_out_of_bounds(state->playerstate);
             draw_all(state, platforms);
             increase_timer(state->scoreboard, game_start);

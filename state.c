@@ -50,7 +50,7 @@ void cheststate_destroy(Cheststate* state) {
     free(state);
 }
 
-State* state_create(InitialState initialState, sprite_id* platforms) {
+State* state_create(InitialState initialState, sprite_id platforms[]) {
     State* temp = malloc(sizeof(State));
     
     temp->scoreboard = scoreboard_create();
