@@ -15,10 +15,6 @@ const InitialState initialstate = {
     .bitmap = 0,
 };
 
-State* state;
-sprite_id Platforms[200]; 
-int PlatformArrayLength;
-
 //SPRITES
 char *player_image =
     " ____ "
@@ -50,6 +46,10 @@ char *safeBlock_image =
 char *badBlock_image =
     "xxxxxxxxxx"
     "xxxxxxxxxx";
+
+int len(void* array) {
+    return sizeof(*array)/sizeof(array[0]);
+}
 
 // Returns a random double floating point number between two values
 double rand_number(double min, double max)
@@ -110,8 +110,8 @@ sprite_id setup_platform(int px, int py, int width, double dx, char* bitmap){
 }
 
 // Create platform co-ordinates, length, width, bitmap, dx and store in array
-void create_platforms( void ) {
-    memset(Platforms, 0, sizeof Platforms);
+void create_platforms(sprite_id* Platforms) {
+    memset(Platforms, 0, sizeof *Platforms);
     int num_rows = get_num_rows();
     int row_spacing = 9;
     int initX = 1, initY = 11;
@@ -153,12 +153,10 @@ void create_platforms( void ) {
         }
         deltaY += row_spacing;
     }
-    // Set global variable of Array Length.
-    PlatformArrayLength = sizeof(Platforms)/sizeof(Platforms[0]);
 }
 
-void destroy_platforms(void) {
-    for(int i = 0; i < sizeof(Platforms)/sizeof(Platforms[0]); i++) {
+void destroy_platforms(sprite_id* Platforms) {
+    for(int i = 0; i < len(Platforms); i++) {
         if (Platforms[i] != NULL) {
             free(Platforms[i]);
         }
@@ -166,9 +164,9 @@ void destroy_platforms(void) {
 }
 
 // From Array of platforms, draw platforms on screen
-void draw_platforms( void )
+void draw_platforms(sprite_id* Platforms)
 {
-    for (int j = 0; j < PlatformArrayLength; j++){
+    for (int j = 0; j < len(Platforms); j++){
         if (Platforms[j] != NULL){ 
             sprite_draw(Platforms[j]);
         }
@@ -177,7 +175,7 @@ void draw_platforms( void )
 
 // Checks wich blocks in the top row are safe blocks
 // Randomly chooses and returns one of the safe blocks
-sprite_id choose_safe_block()
+sprite_id choose_safe_block(sprite_id* Platforms)
 {
     int i = rand_number(0, get_num_columns());
     while(Platforms[i] == NULL || Platforms[i]->bitmap != safeBlock_image)
@@ -188,16 +186,16 @@ sprite_id choose_safe_block()
 }
 
 // Initial player spawn function
-sprite_id player_create( void )
+sprite_id player_create(sprite_id* platforms)
 {
-    sprite_id safe_block = choose_safe_block();
+    sprite_id safe_block = choose_safe_block(platforms);
     return sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
 }
 
-Playerstate* playerstate_create(double momentum, int bitmap) {
+Playerstate* playerstate_create(sprite_id* platforms, double momentum, int bitmap) {
     Playerstate* temp = malloc(sizeof(Playerstate));
 
-    temp->player_sprite = player_create();
+    temp->player_sprite = player_create(platforms);
     temp->momentum = momentum;
     temp->old_block = 0;
     temp->bitmap = bitmap;
@@ -207,7 +205,7 @@ Playerstate* playerstate_create(double momentum, int bitmap) {
 
 // Draws status display bar at top of screen
 // Updates when score, lives and time changes
-void draw_scoreboard( void )
+void draw_scoreboard(Gamestate* gamestate, Scoreboard* scoreboard)
 {
     int mx = screen_width() - 50;
     int my = 1;
@@ -218,8 +216,8 @@ void draw_scoreboard( void )
      // draw text/content of scoreboard
     draw_line(mx - 2, 0, mx - 2, 3, '|');
     draw_formatted(mx, my, "n9467688 |");
-    draw_formatted(mx + 11, my, "Lives: %d |", state->gamestate->livesRemaining );
-    draw_formatted(mx + 23, my, "Score: %d", state->scoreboard->score);
+    draw_formatted(mx + 11, my, "Lives: %d |", gamestate->livesRemaining );
+    draw_formatted(mx + 23, my, "Score: %d", scoreboard->score);
     // draw_formatted(mx + 34, my,"| %02u:%02u", minutes, seconds); 
     // Print the maximum resident set size used (in kilobytes).
     draw_formatted(mx + 34, my, "%ld kilobytes\n",r_usage.ru_maxrss); 
@@ -230,9 +228,9 @@ void draw_scoreboard( void )
 
 // Move platforms according to set dx.
 // Moves platform to opposite side of screen when it reaches the edge
-void auto_move_platforms( void )
+void auto_move_platforms(sprite_id* Platforms)
 {
-    for (int i = 0; i < PlatformArrayLength; i ++){
+    for (int i = 0; i < len(Platforms); i ++){
         if (Platforms[i] != NULL){ // Do not attempt to call empty value
             sprite_step(Platforms[i]);
             int px = Platforms[i]->x;
@@ -250,24 +248,24 @@ void auto_move_platforms( void )
 /// PROCESS FUNCTIONS
 
 // Increases the timer displayed in status display
-void increase_timer(double game_start)
+void increase_timer(Scoreboard* scoreboard, double game_start)
 {   
     double time_past = get_current_time() - game_start;
-    state->scoreboard->secondsPast = time_past;
+    scoreboard->secondsPast = time_past;
 }
 
 // Called when player collides with forbidden block or moves out of bounds
 // Pauses the game momentarily, resets player to safe block in starting row
-void die ( void )
+void die (State* state, sprite_id* platforms)
 {   
     timer_pause(1000);
     sprite_hide(state->playerstate->player_sprite);
-    destroy_platforms();
-    create_platforms();
+    destroy_platforms(platforms);
+    create_platforms(platforms);
     //reset player variables
     sprite_turn_to(state->playerstate->player_sprite, 0, 0);
     //choose safe platform to move to
-    sprite_id safe_block = choose_safe_block();
+    sprite_id safe_block = choose_safe_block(platforms);
     sprite_move_to(state->playerstate->player_sprite, safe_block->x, safe_block->y - 3);
     state->playerstate->player_sprite->dx = 0;
     state->playerstate->player_sprite->dy = 0;
@@ -281,50 +279,50 @@ void die ( void )
 }
 
 // Alternates chest bitmap between two images
-void animate_chest( void )
+void animate_chest(Cheststate* cheststate)
 {
-    if(state->cheststate->chest_timer != NULL && timer_expired(state->cheststate->chest_timer))
+    if(cheststate->chest_timer != NULL && timer_expired(cheststate->chest_timer))
     {
-        if (state->cheststate->alt_chest)
+        if (cheststate->alt_chest)
         {
-            state->cheststate->chest_sprite->bitmap = chest_image_alt;
+            cheststate->chest_sprite->bitmap = chest_image_alt;
         }
         else
         {
-            state->cheststate->chest_sprite->bitmap = chest_image;
+            cheststate->chest_sprite->bitmap = chest_image;
         }
-        state->cheststate->alt_chest = !state->cheststate->alt_chest;
+        cheststate->alt_chest = !cheststate->alt_chest;
     }
 }
 
 // Moves chest along bottom of screen
-void move_chest( int key)
+void move_chest(Cheststate* cheststate, int key)
 {
     // Uses code from ZDJ Topic 04
     // Toggle chest movement when 't' pressed.
     if (key == 't')
     {
-        state->cheststate->stop_chest = !state->cheststate->stop_chest;
+        cheststate->stop_chest = !cheststate->stop_chest;
     }
-    if (!state->cheststate->stop_chest)
+    if (!cheststate->stop_chest)
     {
-        sprite_step(state->cheststate->chest_sprite);
-        animate_chest();
+        sprite_step(cheststate->chest_sprite);
+        animate_chest(cheststate);
     }
     // Change direction when wall hit
-    int cx = round( sprite_x( state->cheststate->chest_sprite ) );
-    double cdx = sprite_dx( state->cheststate->chest_sprite );
-    if ( cx == 0 || cx == screen_width() - sprite_width( state->cheststate->chest_sprite ) ){
+    int cx = round(sprite_x(cheststate->chest_sprite));
+    double cdx = sprite_dx(cheststate->chest_sprite);
+    if ( cx == 0 || cx == screen_width() - sprite_width(cheststate->chest_sprite)) {
         cdx = -cdx;
     }
-    if ( cdx != sprite_dx( state->cheststate->chest_sprite ) ){
-        sprite_back( state->cheststate->chest_sprite );
-        sprite_turn_to( state->cheststate->chest_sprite, cdx, 0 );
+    if (cdx != sprite_dx(cheststate->chest_sprite)) {
+        sprite_back(cheststate->chest_sprite);
+        sprite_turn_to(cheststate->chest_sprite, cdx, 0);
     }
 }
 
 // Increases score only when player moves to or lands on a new safe block
-void increase_score(int new_block)
+void increase_score(State* state, int new_block)
 {
     if(state->playerstate->old_block != new_block)
     {
@@ -365,18 +363,18 @@ bool pixel_level_collision( Sprite *s1, Sprite *s2 )
 }
 
 // Checks for collision between the player and each block 'Platforms' array
-bool platforms_collide( void ) 
+bool platforms_collide(Playerstate* playerstate, sprite_id* Platforms) 
 {
     bool output = false;
     int c = 0;
-    for (int i = 0; i < PlatformArrayLength; i++){
+    for (int i = 0; i < len(Platforms); i++){
         if(Platforms[i] != NULL)    // Do not check empty platforms
         { 
-            bool collide = pixel_level_collision(state->playerstate->player_sprite, Platforms[i]);
+            bool collide = pixel_level_collision(playerstate->player_sprite, Platforms[i]);
             if (collide)
             {
                 if(Platforms[i]->bitmap == badBlock_image){
-                    die();
+                    //TODO die
                     output = true;
                     break;
                 }
@@ -384,10 +382,10 @@ bool platforms_collide( void )
                 {   // Die if any part of current block is off screen
                     if(Platforms[i]->x > screen_width() - Platforms[i]->width ||
                         Platforms[i]->x < 0){
-                        die();
+                        // TODO die
                     }
                     // Update player speed so that player moves with platform on
-                    state->playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
+                    playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
                     output = true;
                     if (c == 0){
                         c = i;
@@ -397,141 +395,140 @@ bool platforms_collide( void )
         } 
     }
     if (output == true){
-        increase_score(c);
+        // TODO increase score by c
     }
     return output;
 }
 
 // Cause the player to die if moved out of bounds to left, right or bottom of screen
-void check_out_of_bounds( void )
+void check_out_of_bounds(Playerstate* playerstate)
 {
-    if (state->playerstate->player_sprite->y >= screen_height() + 6 || 
-        state->playerstate->player_sprite->x + sprite_width(state->playerstate->player_sprite) < 0 || 
-        state->playerstate->player_sprite->x > screen_width())
+    if (playerstate->player_sprite->y >= screen_height() + 6 || 
+        playerstate->player_sprite->x + sprite_width(playerstate->player_sprite) < 0 || 
+        playerstate->player_sprite->x > screen_width())
         {
-        die();
+        // TODO DIE
     }     
 }
 
 // Changes the player model/image based on the last key pressed.
 // Holds the image for certain time after button stopped pressed to prevent flickering
-void animate_player( void )
+void animate_player(Playerstate* playerstate, bool on_platform)
 {
-    if (state->playerstate->bitmap == 1)
+    if (playerstate->bitmap == 1)
     {
-        state->playerstate->player_sprite->bitmap = right_image;
-        state->playerstate->PlayerStillTimer = create_timer(150);
-        state->playerstate->bitmap = 0;
+        playerstate->player_sprite->bitmap = right_image;
+        playerstate->PlayerStillTimer = create_timer(150);
+        playerstate->bitmap = 0;
     }
-    else if (state->playerstate->bitmap == 2)
+    else if (playerstate->bitmap == 2)
     {
-        state->playerstate->player_sprite->bitmap = left_image;
-        state->playerstate->PlayerStillTimer = create_timer(150);
-        state->playerstate->bitmap = 0;
+        playerstate->player_sprite->bitmap = left_image;
+        playerstate->PlayerStillTimer = create_timer(150);
+        playerstate->bitmap = 0;
     }
-    else if (state->playerstate->bitmap == 3)
+    else if (playerstate->bitmap == 3)
     {
-        state->playerstate->player_sprite->bitmap = falling_image;
-        state->playerstate->PlayerStillTimer = create_timer(150);
-        state->playerstate->bitmap = 0;
+        playerstate->player_sprite->bitmap = falling_image;
+        playerstate->PlayerStillTimer = create_timer(150);
+        playerstate->bitmap = 0;
     }
     // Also reset player momentum if no keys pressed for long enough
-    if (state->playerstate->PlayerStillTimer != NULL)
+    if (playerstate->PlayerStillTimer != NULL)
     {
-        if (timer_expired(state->playerstate->PlayerStillTimer) == true && platforms_collide())
+        if (timer_expired(playerstate->PlayerStillTimer) == true && on_platform)
         {
-            state->playerstate->player_sprite->bitmap = player_image;
-            state->playerstate->momentum = 0;
+            playerstate->player_sprite->bitmap = player_image;
+            playerstate->momentum = 0;
         }
     }
 }
 
 // Moves player according to key pressed
-void move_player(int key)
+void move_player(Playerstate* playerstate, int key, bool on_platform)
 {
     int visible_width = screen_width() - 1;
-    int px = sprite_x(state->playerstate->player_sprite);
-    if (!platforms_collide()) return;
+    int px = sprite_x(playerstate->player_sprite);
+    if (!on_platform) return;
     if ( key == 'd' && px < visible_width - 6)
     {
-        sprite_move( state->playerstate->player_sprite, 1, 0);
-        state->playerstate->bitmap = 1;
-        if (state->playerstate->momentum < 0.4)
+        sprite_move(playerstate->player_sprite, 1, 0);
+        playerstate->bitmap = 1;
+        if (playerstate->momentum < 0.4)
         {
-            state->playerstate->momentum += 0.3;
+            playerstate->momentum += 0.3;
         }        
     }
     else if (key == 'a' && px > 0)
     {
-        sprite_move( state->playerstate->player_sprite, -1, 0);
-        state->playerstate->bitmap = 2;
-        if (state->playerstate->momentum > -0.4)
+        sprite_move( playerstate->player_sprite, -1, 0);
+        playerstate->bitmap = 2;
+        if (playerstate->momentum > -0.4)
         {
-            state->playerstate->momentum += -0.3;
+            playerstate->momentum += -0.3;
         }
     }
     else if (key == 'w')
     {
-        state->playerstate->player_sprite->dy = -2;
+        playerstate->player_sprite->dy = -2;
         // Jumping with horizontal velocity moves further than
         // falling with horizontal velocity
-        if (state->playerstate->momentum != 0)
+        if (playerstate->momentum != 0)
         { 
-            state->playerstate->momentum *= 1.5;
+            playerstate->momentum *= 1.5;
         }
     }
 }
 
 // Decays momentum to allow for distance control over jumps
-void horizonal_movement( void )
+void horizonal_movement(Playerstate* playerstate, bool on_platform)
 {
-    if (state->playerstate->momentum != 0 && platforms_collide()){
-        if (state->playerstate->momentum > 0 && state->playerstate->momentum < 0.5){
-            state->playerstate->momentum -= 0.05;
+    if (playerstate->momentum != 0 && on_platform) {
+        if (playerstate->momentum > 0 && playerstate->momentum < 0.5){
+            playerstate->momentum -= 0.05;
         }
-        else if (state->playerstate->momentum > -0.5 && state->playerstate->momentum < 0){
-            state->playerstate->momentum += 0.05;
+        else if (playerstate->momentum > -0.5 && playerstate->momentum < 0){
+            playerstate->momentum += 0.05;
         }
     }
 }
 
 
-void gravity( void )
+void gravity(Playerstate* playerstate, bool is_colliding)
 {
-    bool is_colliding = platforms_collide();
     // When on block, kill velocity
     if (is_colliding)
     {
-       state->playerstate->player_sprite->dy = 0;
+       playerstate->player_sprite->dy = 0;
    }
     // When jumping, half velocity each step
-    else if(state->playerstate->player_sprite->dy <= -0.01)
+    else if(playerstate->player_sprite->dy <= -0.01)
     {
-        state->playerstate->player_sprite->dy *= 0.3;
+        playerstate->player_sprite->dy *= 0.3;
     }
     // When falling (negative velocity) double velocity
-    else if (state->playerstate->player_sprite->dy > 0 && state->playerstate->player_sprite->dy < 0.8)
+    else if (playerstate->player_sprite->dy > 0 && playerstate->player_sprite->dy < 0.8)
     {
-        state->playerstate->player_sprite->dy *= 1.3;
+        playerstate->player_sprite->dy *= 1.3;
     }
     // When jump peak reached, flip velocity to negative
-    else if(state->playerstate->player_sprite->dy > -0.2 && state->playerstate->player_sprite->dy < 0)
+    else if(playerstate->player_sprite->dy > -0.2 && playerstate->player_sprite->dy < 0)
     {
-         state->playerstate->player_sprite->dy = -state->playerstate->player_sprite->dy;
+         playerstate->player_sprite->dy = -playerstate->player_sprite->dy;
     }
     // Else give player falling velocity
-    else if(!is_colliding && state->playerstate->player_sprite->dy == 0.0)
+    else if(!is_colliding && playerstate->player_sprite->dy == 0.0)
     {
-       state->playerstate->player_sprite->dy = 0.01;
+       playerstate->player_sprite->dy = 0.01;
     }
     // Apply accumulated 'momentum' to player speed when off block.
     if(!is_colliding){
-       state->playerstate->player_sprite->dx = state->playerstate->momentum;
+       playerstate->player_sprite->dx = playerstate->momentum;
     }
 }
 
 // Checks for player collision with chest, hides chest upon collision
-void chest_collide( void )
+void chest_collide(State* state)
 { 
     bool collide = pixel_level_collision(state->playerstate->player_sprite, state->cheststate->chest_sprite);
     if (collide)
@@ -542,13 +539,13 @@ void chest_collide( void )
         // move chest off screen, can't collide with player
         // todo destroy sprite
 
-        die();
+        // TODO die
     }
 }
 
 
 // Game over screen displayed when player loses all lives
-void game_over_screen( void )
+void game_over_screen(State* state)
 {
     clear_screen();
     int tx = screen_width() / 2 - 5;
@@ -580,61 +577,67 @@ void game_over_screen( void )
 
 
 // Draw all sprites in new positions
-void draw_all( void )
+void draw_all(State* state, sprite_id* platforms)
 {
     sprite_draw(state->cheststate->chest_sprite);
     sprite_draw(state->playerstate->player_sprite);
-    draw_platforms();
-    draw_scoreboard();
+    draw_platforms(platforms);
+    draw_scoreboard(state->gamestate, state->scoreboard);
 }
 
 //// SETUP
-void setup(void)
+// #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+// #pragma GCC diagnostic ignored "-Wuninitialized"
+void setup(State** state, sprite_id* platforms)
 {
     // setup initial screen here
-    create_platforms();
-    state = state_create(initialstate);
-    draw_all();
+    create_platforms(platforms);
+    *state = state_create(initialstate, platforms);
+    draw_all(*state, platforms);
     
 }
 
-void cleanup(void) {
+void cleanup(State* state, sprite_id* platforms) {
     state_destroy(state);
-    destroy_platforms();
+    destroy_platforms(platforms);
 }
 
 //// MAIN
 int main( void )
 {  
+    State* state;
+    sprite_id platforms[200]; 
+
     while (true){ 
         // Seed rand() so not the same platforms every time
         srand(get_current_time());
         // Get time at start of game for timekeeping
         double game_start = get_current_time();
         setup_screen();
-        setup();
+        setup(&state, platforms);
         show_screen();
         while (!state->gamestate->game_over)
         {
+            bool is_colliding = platforms_collide(state->playerstate, platforms);
             clear_screen();
-            chest_collide(); 
-            gravity();
+            chest_collide(state); 
+            gravity(state->playerstate, is_colliding);
             int key = get_char();
-            move_player(key); 
-            animate_player();
-            move_chest(key);
+            move_player(state->playerstate, key, is_colliding); 
+            animate_player(state->playerstate, is_colliding);
+            move_chest(state->cheststate, key);
             sprite_step(state->playerstate->player_sprite); 
-            auto_move_platforms();
-            check_out_of_bounds();
-            draw_all();
-            increase_timer(game_start);
+            auto_move_platforms(platforms);
+            check_out_of_bounds(state->playerstate);
+            draw_all(state, platforms);
+            increase_timer(state->scoreboard, game_start);
             show_screen();
             fflush(stdin); //flush buffer.
             timer_pause(10);
         }
 
-        game_over_screen();
-        cleanup();
+        game_over_screen(state);
+        cleanup(state, platforms);
     }
 
     return 0;

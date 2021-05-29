@@ -13,7 +13,7 @@
 
 typedef struct InitialState {
     int lives;
-    float momentum;
+    double momentum;
     int bitmap;
 } InitialState;
 
@@ -43,7 +43,7 @@ typedef struct Playerstate {
     timer_id PlayerStillTimer;
 } Playerstate;
 
-Playerstate* playerstate_create(double momentum, int bitmap);
+Playerstate* playerstate_create(sprite_id* platforms, double momentum, int bitmap);
 
 void playerstate_destroy(Playerstate* state);
 
@@ -68,7 +68,7 @@ typedef struct State {
     Cheststate* cheststate;
 } State;
 
-State* state_create(InitialState initialState);
+State* state_create(InitialState initialState, sprite_id* platforms);
 
 void state_destroy(State* s);
 
