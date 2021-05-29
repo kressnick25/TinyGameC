@@ -12,13 +12,13 @@ const int GAMESTATE_INITIAL_LIVES = 3;
 const float PLAYERSTATE_INITIAL_MOMENTUM = 0;
 const int PLAYERSTATE_INITIAL_BITMAP = 0;
 
-typedef struct scoreboard {
+typedef struct Scoreboard {
     int score;
     int secondsPast;
-} scoreboard;
+} Scoreboard;
 
-scoreboard* init_scoreboard (void) {
-    scoreboard* temp = malloc(sizeof(scoreboard));
+Scoreboard* init_scoreboard (void) {
+    Scoreboard* temp = malloc(sizeof(Scoreboard));
     
     temp->score = 0;
     temp->secondsPast = 0;
@@ -26,19 +26,19 @@ scoreboard* init_scoreboard (void) {
     return temp;
 }
 
-void destroy_scoreboard(scoreboard* s) {
+void destroy_scoreboard(Scoreboard* s) {
     free(s);
 }
 
-typedef struct gamestate {
+typedef struct Gamestate {
     bool game_over;
     int livesRemaining;
-} gamestate;
+} Gamestate;
 
-gamestate* init_gamestate (int lives) {
+Gamestate* init_gamestate (int lives) {
     assert(lives > 0);
 
-    gamestate* temp = malloc(sizeof(gamestate));
+    Gamestate* temp = malloc(sizeof(Gamestate));
 
     temp->game_over = false;
     temp->livesRemaining = lives;
@@ -46,81 +46,83 @@ gamestate* init_gamestate (int lives) {
     return temp;
 }
 
-void destroy_gamestate(gamestate* s) {
+void destroy_gamestate(Gamestate* s) {
     free(s);
 }
 
-typedef struct playerstate {
-    sprite_id player;
+typedef struct Playerstate {
+    sprite_id player_sprite;
     float momentum;
     int old_block;
     int bitmap;
     timer_id PlayerStillTimer;
-} playerstate;
+} Playerstate;
 
 sprite_id create_player(void);
-playerstate* init_playerstate(double momentum, int bitmap);
+Playerstate* init_playerstate(double momentum, int bitmap);
 
-void destroy_playerstate(playerstate* state) {
-    sprite_destroy(state->player);
+void destroy_playerstate(Playerstate* state) {
+    sprite_destroy(state->player_sprite);
     destroy_timer(state->PlayerStillTimer);
     free(state);
 }
 
-typedef struct cheststate {
-    sprite_id chest;
+typedef struct Cheststate {
+    sprite_id chest_sprite;
     bool alt_chest;
     bool stop_chest;
     timer_id chest_timer;
     timer_id hide_chest_timer; 
-} cheststate;
+} Cheststate;
 
 sprite_id make_chest(void);
 
-cheststate* init_cheststate(void) {
-    cheststate* temp = malloc(sizeof(cheststate));
+Cheststate* init_cheststate(void) {
+    Cheststate* temp = malloc(sizeof(Cheststate));
     
     temp->chest_timer = create_timer(500);
-    temp->chest = make_chest();
+    temp->chest_sprite = make_chest();
     temp->alt_chest = false;
     temp->stop_chest = false;
 
     return temp;
 }
 
-void destroy_cheststate(cheststate* state) {
-    sprite_destroy(state->chest);
+void destroy_cheststate(Cheststate* state) {
+    sprite_destroy(state->chest_sprite);
     destroy_timer(state->chest_timer);
     free(state);
 }
 
-typedef struct state {
-    scoreboard* Scoreboard;
-    gamestate* Gamestate;
-    playerstate* Playerstate;
-    cheststate* Cheststate;
-} state;
+typedef struct State {
+    Scoreboard* scoreboard;
+    Gamestate* gamestate;
+    Playerstate* playerstate;
+    Cheststate* cheststate;
+} State;
 
-state* init_state() {
-    state* temp = malloc(sizeof(state));
+State* init_state() {
+    State* temp = malloc(sizeof(State));
 
-    temp->Scoreboard = init_scoreboard();
-    temp->Gamestate = init_gamestate(GAMESTATE_INITIAL_LIVES);
-    temp->Playerstate = init_playerstate(PLAYERSTATE_INITIAL_MOMENTUM, PLAYERSTATE_INITIAL_BITMAP);
-    temp->Cheststate = init_cheststate();
+    temp->scoreboard = init_scoreboard();
+    temp->gamestate = init_gamestate(GAMESTATE_INITIAL_LIVES);
+    temp->playerstate = init_playerstate(PLAYERSTATE_INITIAL_MOMENTUM, PLAYERSTATE_INITIAL_BITMAP);
+    temp->cheststate = init_cheststate();
     
     return temp;
 }
 
-void destroy_state(state* s) {
-    destroy_scoreboard(s->Scoreboard);
-    destroy_gamestate(s->Gamestate);
-    destroy_playerstate(s->Playerstate);
-    destroy_cheststate(s->Cheststate);
+void destroy_state(State* s) {
+    destroy_scoreboard(s->scoreboard);
+    destroy_gamestate(s->gamestate);
+    destroy_playerstate(s->playerstate);
+    destroy_cheststate(s->cheststate);
     free(s);
 }
 
-state* STATE;
+State* state;
+sprite_id Platforms[200]; 
+int PlatformArrayLength;
 
 //SPRITES
 char *player_image =
@@ -153,9 +155,6 @@ char *safeBlock_image =
 char *badBlock_image =
     "xxxxxxxxxx"
     "xxxxxxxxxx";
-
-sprite_id Platforms[200]; 
-int PlatformArrayLength;
 
 // Returns a random double floating point number between two values
 double rand_number(double min, double max)
@@ -300,10 +299,10 @@ sprite_id create_player( void )
     return sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
 }
 
-playerstate* init_playerstate(double momentum, int bitmap) {
-    playerstate* temp = malloc(sizeof(playerstate));
+Playerstate* init_playerstate(double momentum, int bitmap) {
+    Playerstate* temp = malloc(sizeof(Playerstate));
 
-    temp->player = create_player();
+    temp->player_sprite = create_player();
     temp->momentum = momentum;
     temp->old_block = 0;
     temp->bitmap = bitmap;
@@ -324,8 +323,8 @@ void draw_scoreboard( void )
      // draw text/content of scoreboard
     draw_line(mx - 2, 0, mx - 2, 3, '|');
     draw_formatted(mx, my, "n9467688 |");
-    draw_formatted(mx + 11, my, "Lives: %d |", STATE->Gamestate->livesRemaining );
-    draw_formatted(mx + 23, my, "Score: %d", STATE->Scoreboard->score);
+    draw_formatted(mx + 11, my, "Lives: %d |", state->gamestate->livesRemaining );
+    draw_formatted(mx + 23, my, "Score: %d", state->scoreboard->score);
     // draw_formatted(mx + 34, my,"| %02u:%02u", minutes, seconds); 
     // Print the maximum resident set size used (in kilobytes).
     draw_formatted(mx + 34, my, "%ld kilobytes\n",r_usage.ru_maxrss); 
@@ -359,7 +358,7 @@ void auto_move_platforms( void )
 void increase_timer(double game_start)
 {   
     double time_past = get_current_time() - game_start;
-    STATE->Scoreboard->secondsPast = time_past;
+    state->scoreboard->secondsPast = time_past;
 }
 
 // Called when player collides with forbidden block or moves out of bounds
@@ -367,39 +366,39 @@ void increase_timer(double game_start)
 void die ( void )
 {   
     timer_pause(1000);
-    sprite_hide(STATE->Playerstate->player);
+    sprite_hide(state->playerstate->player_sprite);
     destroy_platforms();
     create_platforms();
     //reset player variables
-    sprite_turn_to(STATE->Playerstate->player, 0, 0);
+    sprite_turn_to(state->playerstate->player_sprite, 0, 0);
     //choose safe platform to move to
     sprite_id safe_block = choose_safe_block();
-    sprite_move_to(STATE->Playerstate->player, safe_block->x, safe_block->y - 3);
-    STATE->Playerstate->player->dx = 0;
-    STATE->Playerstate->player->dy = 0;
-    STATE->Playerstate->momentum = 0;
-    sprite_show(STATE->Playerstate->player);
-    STATE->Gamestate->livesRemaining--;
-    if (STATE->Gamestate->livesRemaining == 0)
+    sprite_move_to(state->playerstate->player_sprite, safe_block->x, safe_block->y - 3);
+    state->playerstate->player_sprite->dx = 0;
+    state->playerstate->player_sprite->dy = 0;
+    state->playerstate->momentum = 0;
+    sprite_show(state->playerstate->player_sprite);
+    state->gamestate->livesRemaining--;
+    if (state->gamestate->livesRemaining == 0)
     {
-        STATE->Gamestate->game_over = true;
+        state->gamestate->game_over = true;
     }
 }
 
 // Alternates chest bitmap between two images
 void animate_chest( void )
 {
-    if(STATE->Cheststate->chest_timer != NULL && timer_expired(STATE->Cheststate->chest_timer))
+    if(state->cheststate->chest_timer != NULL && timer_expired(state->cheststate->chest_timer))
     {
-        if (STATE->Cheststate->alt_chest)
+        if (state->cheststate->alt_chest)
         {
-            STATE->Cheststate->chest->bitmap = chest_image_alt;
+            state->cheststate->chest_sprite->bitmap = chest_image_alt;
         }
         else
         {
-            STATE->Cheststate->chest->bitmap = chest_image;
+            state->cheststate->chest_sprite->bitmap = chest_image;
         }
-        STATE->Cheststate->alt_chest = !STATE->Cheststate->alt_chest;
+        state->cheststate->alt_chest = !state->cheststate->alt_chest;
     }
 }
 
@@ -410,33 +409,33 @@ void move_chest( int key)
     // Toggle chest movement when 't' pressed.
     if (key == 't')
     {
-        STATE->Cheststate->stop_chest = !STATE->Cheststate->stop_chest;
+        state->cheststate->stop_chest = !state->cheststate->stop_chest;
     }
-    if (!STATE->Cheststate->stop_chest)
+    if (!state->cheststate->stop_chest)
     {
-        sprite_step(STATE->Cheststate->chest);
+        sprite_step(state->cheststate->chest_sprite);
         animate_chest();
     }
     // Change direction when wall hit
-    int cx = round( sprite_x( STATE->Cheststate->chest ) );
-    double cdx = sprite_dx( STATE->Cheststate->chest );
-    if ( cx == 0 || cx == screen_width() - sprite_width( STATE->Cheststate->chest ) ){
+    int cx = round( sprite_x( state->cheststate->chest_sprite ) );
+    double cdx = sprite_dx( state->cheststate->chest_sprite );
+    if ( cx == 0 || cx == screen_width() - sprite_width( state->cheststate->chest_sprite ) ){
         cdx = -cdx;
     }
-    if ( cdx != sprite_dx( STATE->Cheststate->chest ) ){
-        sprite_back( STATE->Cheststate->chest );
-        sprite_turn_to( STATE->Cheststate->chest, cdx, 0 );
+    if ( cdx != sprite_dx( state->cheststate->chest_sprite ) ){
+        sprite_back( state->cheststate->chest_sprite );
+        sprite_turn_to( state->cheststate->chest_sprite, cdx, 0 );
     }
 }
 
 // Increases score only when player moves to or lands on a new safe block
 void increase_score(int new_block)
 {
-    if(STATE->Playerstate->old_block != new_block)
+    if(state->playerstate->old_block != new_block)
     {
-        STATE->Scoreboard->score++;
+        state->scoreboard->score++;
     }
-    STATE->Playerstate->old_block = new_block;
+    state->playerstate->old_block = new_block;
 }
 
 // Checks collision between two sprites on a pixel level
@@ -478,7 +477,7 @@ bool platforms_collide( void )
     for (int i = 0; i < PlatformArrayLength; i++){
         if(Platforms[i] != NULL)    // Do not check empty platforms
         { 
-            bool collide = pixel_level_collision(STATE->Playerstate->player, Platforms[i]);
+            bool collide = pixel_level_collision(state->playerstate->player_sprite, Platforms[i]);
             if (collide)
             {
                 if(Platforms[i]->bitmap == badBlock_image){
@@ -493,7 +492,7 @@ bool platforms_collide( void )
                         die();
                     }
                     // Update player speed so that player moves with platform on
-                    STATE->Playerstate->player->dx = sprite_dx(Platforms[i]);
+                    state->playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
                     output = true;
                     if (c == 0){
                         c = i;
@@ -511,9 +510,9 @@ bool platforms_collide( void )
 // Cause the player to die if moved out of bounds to left, right or bottom of screen
 void check_out_of_bounds( void )
 {
-    if (STATE->Playerstate->player->y >= screen_height() + 6 || 
-        STATE->Playerstate->player->x + sprite_width(STATE->Playerstate->player) < 0 || 
-        STATE->Playerstate->player->x > screen_width())
+    if (state->playerstate->player_sprite->y >= screen_height() + 6 || 
+        state->playerstate->player_sprite->x + sprite_width(state->playerstate->player_sprite) < 0 || 
+        state->playerstate->player_sprite->x > screen_width())
         {
         die();
     }     
@@ -523,31 +522,31 @@ void check_out_of_bounds( void )
 // Holds the image for certain time after button stopped pressed to prevent flickering
 void animate_player( void )
 {
-    if (STATE->Playerstate->bitmap == 1)
+    if (state->playerstate->bitmap == 1)
     {
-        STATE->Playerstate->player->bitmap = right_image;
-        STATE->Playerstate->PlayerStillTimer = create_timer(150);
-        STATE->Playerstate->bitmap = 0;
+        state->playerstate->player_sprite->bitmap = right_image;
+        state->playerstate->PlayerStillTimer = create_timer(150);
+        state->playerstate->bitmap = 0;
     }
-    else if (STATE->Playerstate->bitmap == 2)
+    else if (state->playerstate->bitmap == 2)
     {
-        STATE->Playerstate->player->bitmap = left_image;
-        STATE->Playerstate->PlayerStillTimer = create_timer(150);
-        STATE->Playerstate->bitmap = 0;
+        state->playerstate->player_sprite->bitmap = left_image;
+        state->playerstate->PlayerStillTimer = create_timer(150);
+        state->playerstate->bitmap = 0;
     }
-    else if (STATE->Playerstate->bitmap == 3)
+    else if (state->playerstate->bitmap == 3)
     {
-        STATE->Playerstate->player->bitmap = falling_image;
-        STATE->Playerstate->PlayerStillTimer = create_timer(150);
-        STATE->Playerstate->bitmap = 0;
+        state->playerstate->player_sprite->bitmap = falling_image;
+        state->playerstate->PlayerStillTimer = create_timer(150);
+        state->playerstate->bitmap = 0;
     }
     // Also reset player momentum if no keys pressed for long enough
-    if (STATE->Playerstate->PlayerStillTimer != NULL)
+    if (state->playerstate->PlayerStillTimer != NULL)
     {
-        if (timer_expired(STATE->Playerstate->PlayerStillTimer) == true && platforms_collide())
+        if (timer_expired(state->playerstate->PlayerStillTimer) == true && platforms_collide())
         {
-            STATE->Playerstate->player->bitmap = player_image;
-            STATE->Playerstate->momentum = 0;
+            state->playerstate->player_sprite->bitmap = player_image;
+            state->playerstate->momentum = 0;
         }
     }
 }
@@ -556,34 +555,34 @@ void animate_player( void )
 void move_player(int key)
 {
     int visible_width = screen_width() - 1;
-    int px = sprite_x(STATE->Playerstate->player);
+    int px = sprite_x(state->playerstate->player_sprite);
     if (!platforms_collide()) return;
     if ( key == 'd' && px < visible_width - 6)
     {
-        sprite_move( STATE->Playerstate->player, 1, 0);
-        STATE->Playerstate->bitmap = 1;
-        if (STATE->Playerstate->momentum < 0.4)
+        sprite_move( state->playerstate->player_sprite, 1, 0);
+        state->playerstate->bitmap = 1;
+        if (state->playerstate->momentum < 0.4)
         {
-            STATE->Playerstate->momentum += 0.3;
+            state->playerstate->momentum += 0.3;
         }        
     }
     else if (key == 'a' && px > 0)
     {
-        sprite_move( STATE->Playerstate->player, -1, 0);
-        STATE->Playerstate->bitmap = 2;
-        if (STATE->Playerstate->momentum > -0.4)
+        sprite_move( state->playerstate->player_sprite, -1, 0);
+        state->playerstate->bitmap = 2;
+        if (state->playerstate->momentum > -0.4)
         {
-            STATE->Playerstate->momentum += -0.3;
+            state->playerstate->momentum += -0.3;
         }
     }
     else if (key == 'w')
     {
-        STATE->Playerstate->player->dy = -2;
+        state->playerstate->player_sprite->dy = -2;
         // Jumping with horizontal velocity moves further than
         // falling with horizontal velocity
-        if (STATE->Playerstate->momentum != 0)
+        if (state->playerstate->momentum != 0)
         { 
-            STATE->Playerstate->momentum *= 1.5;
+            state->playerstate->momentum *= 1.5;
         }
     }
 }
@@ -591,12 +590,12 @@ void move_player(int key)
 // Decays momentum to allow for distance control over jumps
 void horizonal_movement( void )
 {
-    if (STATE->Playerstate->momentum != 0 && platforms_collide()){
-        if (STATE->Playerstate->momentum > 0 && STATE->Playerstate->momentum < 0.5){
-            STATE->Playerstate->momentum -= 0.05;
+    if (state->playerstate->momentum != 0 && platforms_collide()){
+        if (state->playerstate->momentum > 0 && state->playerstate->momentum < 0.5){
+            state->playerstate->momentum -= 0.05;
         }
-        else if (STATE->Playerstate->momentum > -0.5 && STATE->Playerstate->momentum < 0){
-            STATE->Playerstate->momentum += 0.05;
+        else if (state->playerstate->momentum > -0.5 && state->playerstate->momentum < 0){
+            state->playerstate->momentum += 0.05;
         }
     }
 }
@@ -608,42 +607,42 @@ void gravity( void )
     // When on block, kill velocity
     if (is_colliding)
     {
-       STATE->Playerstate->player->dy = 0;
+       state->playerstate->player_sprite->dy = 0;
    }
     // When jumping, half velocity each step
-    else if(STATE->Playerstate->player->dy <= -0.01)
+    else if(state->playerstate->player_sprite->dy <= -0.01)
     {
-        STATE->Playerstate->player->dy *= 0.3;
+        state->playerstate->player_sprite->dy *= 0.3;
     }
     // When falling (negative velocity) double velocity
-    else if (STATE->Playerstate->player->dy > 0 && STATE->Playerstate->player->dy < 0.8)
+    else if (state->playerstate->player_sprite->dy > 0 && state->playerstate->player_sprite->dy < 0.8)
     {
-        STATE->Playerstate->player->dy *= 1.3;
+        state->playerstate->player_sprite->dy *= 1.3;
     }
     // When jump peak reached, flip velocity to negative
-    else if(STATE->Playerstate->player->dy > -0.2 && STATE->Playerstate->player->dy < 0)
+    else if(state->playerstate->player_sprite->dy > -0.2 && state->playerstate->player_sprite->dy < 0)
     {
-         STATE->Playerstate->player->dy = -STATE->Playerstate->player->dy;
+         state->playerstate->player_sprite->dy = -state->playerstate->player_sprite->dy;
     }
     // Else give player falling velocity
-    else if(!is_colliding && STATE->Playerstate->player->dy == 0.0)
+    else if(!is_colliding && state->playerstate->player_sprite->dy == 0.0)
     {
-       STATE->Playerstate->player->dy = 0.01;
+       state->playerstate->player_sprite->dy = 0.01;
     }
     // Apply accumulated 'momentum' to player speed when off block.
     if(!is_colliding){
-       STATE->Playerstate->player->dx = STATE->Playerstate->momentum;
+       state->playerstate->player_sprite->dx = state->playerstate->momentum;
     }
 }
 
 // Checks for player collision with chest, hides chest upon collision
 void chest_collide( void )
 { 
-    bool collide = pixel_level_collision(STATE->Playerstate->player, STATE->Cheststate->chest);
+    bool collide = pixel_level_collision(state->playerstate->player_sprite, state->cheststate->chest_sprite);
     if (collide)
     {
-        STATE->Gamestate->livesRemaining += 3;
-        STATE->Cheststate->hide_chest_timer = create_timer(2000);
+        state->gamestate->livesRemaining += 3;
+        state->cheststate->hide_chest_timer = create_timer(2000);
         //sprite_hide(chest);
         // move chest off screen, can't collide with player
         // todo destroy sprite
@@ -659,11 +658,11 @@ void game_over_screen( void )
     clear_screen();
     int tx = screen_width() / 2 - 5;
     int ty = screen_height() / 2 - 5;
-    const int minutes = (STATE->Scoreboard->secondsPast /60) % 60;
-    const int seconds = STATE->Scoreboard->secondsPast % 60;
+    const int minutes = (state->scoreboard->secondsPast /60) % 60;
+    const int seconds = state->scoreboard->secondsPast % 60;
     // Draw text in middle of screen
     draw_formatted(tx, ty, " Game Over");
-    draw_formatted(tx, ty+1, " Score: %d", STATE->Scoreboard->score);
+    draw_formatted(tx, ty+1, " Score: %d", state->scoreboard->score);
     draw_formatted(tx, ty+2, "Time:  %02u:%02u", minutes, seconds);
     draw_formatted(tx - 3, ty+3, "Press 'r' to restart");
     draw_formatted(tx + 5, ty + 4, "or");
@@ -677,7 +676,7 @@ void game_over_screen( void )
             exit(0);
         }
         else if (key == 'r'){
-            STATE->Gamestate->game_over = false;
+            state->gamestate->game_over = false;
             yes = false;
         }
         show_screen();
@@ -688,8 +687,8 @@ void game_over_screen( void )
 // Draw all sprites in new positions
 void draw_all( void )
 {
-    sprite_draw(STATE->Cheststate->chest);
-    sprite_draw(STATE->Playerstate->player);
+    sprite_draw(state->cheststate->chest_sprite);
+    sprite_draw(state->playerstate->player_sprite);
     draw_platforms();
     draw_scoreboard();
 }
@@ -699,13 +698,13 @@ void setup(void)
 {
     // setup initial screen here
     create_platforms();
-    STATE = init_state();
+    state = init_state();
     draw_all();
     
 }
 
 void cleanup(void) {
-    destroy_state(STATE);
+    destroy_state(state);
     destroy_platforms();
 }
 
@@ -720,7 +719,7 @@ int main( void )
         setup_screen();
         setup();
         show_screen();
-        while (!STATE->Gamestate->game_over)
+        while (!state->gamestate->game_over)
         {
             clear_screen();
             chest_collide(); 
@@ -729,7 +728,7 @@ int main( void )
             move_player(key); 
             animate_player();
             move_chest(key);
-            sprite_step(STATE->Playerstate->player); 
+            sprite_step(state->playerstate->player_sprite); 
             auto_move_platforms();
             check_out_of_bounds();
             draw_all();
