@@ -41,6 +41,7 @@ typedef struct Playerstate {
     int old_block;
     int bitmap;
     timer_id PlayerStillTimer;
+    bool dead;
 } Playerstate;
 
 Playerstate* playerstate_create(sprite_id platforms[], double momentum, int bitmap);
