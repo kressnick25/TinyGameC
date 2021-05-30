@@ -9,54 +9,16 @@
 #include "ZDK/cab202_timers.h"
 #include <unistd.h>
 #include "state.h"
-
-#define A_SIZE 200
+#include "platforms.h"
+#include "images.h"
+#include "collision.h"
+#include "util.h"
 
 const InitialState initialstate = {
     .lives = 10,
     .momentum = 0.0,
     .bitmap = 0,
 };
-
-//SPRITES
-char *player_image =
-    " ____ "
-    "{_00_}"
-    "8____8";
-char * right_image = 
-    "  ///]"	
-    " //00}"
-    "//===]";
-char * left_image = 
-    "[\\\\\\  "
-    "{00\\\\ "
-    "[===\\\\\\";
-char * falling_image = 
-  "  __  "
-  " /  \\ "
-  "[_00_]";
-char *chest_image =
-    " ___ "
-    "/___\\"
-    "[_0_]";
-char *chest_image_alt =
-    " ___ "
-    "/#-#\\"
-    "{_$_}";
-char *safeBlock_image =
-    "=========="
-    "==========";
-char *badBlock_image =
-    "xxxxxxxxxx"
-    "xxxxxxxxxx";
-
-// Returns a random double floating point number between two values
-double rand_number(double min, double max)
-{ 
-    double range = (max - min);
-    double div = RAND_MAX / range;
-    return min + (rand() / div);
-}
 
 // Draws treasure at specific co-ordinates
 sprite_id chest_create( void )
@@ -66,142 +28,6 @@ sprite_id chest_create( void )
     sprite_id chest = sprite_create(chest_x, chest_y, 5, 3, chest_image);
     sprite_turn_to(chest, -0.1, 0);
     return chest;
-}
-
-// Randomly selects a platform type based on probability
-char* rand_platform_type ( void )
-{
-    int i = rand_number(0,8);
-    char* type;
-    if (i <= 3){
-        type = safeBlock_image;
-    }
-    else if (i == 4){
-        type = badBlock_image;
-    }
-    else{
-        type = NULL;
-    }
-    return type;
-}
-
-// Returns the number of columns for current terminal screen size
-int get_num_columns()
-{
-    int num_columns = (screen_width() - 1) / 10 + 1;
-    return num_columns;
-}
-
-// Returns the number of rows for the current terminal screen size
-int get_num_rows( void )
-{
-    int height = screen_height() - 7;
-    int row_spacing = 9;    
-    int num_rows = height / row_spacing;
-    return num_rows;
-}
-
-// Returns a sprite_id for a new platform with set input paramenters
-sprite_id platforms_setup(int px, int py, int width, double dx, char* bitmap){
-    sprite_id new_platform = sprite_create( px, py, width, 2, bitmap );
-    sprite_turn_to(new_platform, dx, 0);
-    return new_platform;
-}
-
-// Create platform co-ordinates, length, width, bitmap, dx and store in array
-// a pointer to an array of spride ids
-void platforms_create(sprite_id* Platforms) {
-    // memset(Platforms, 0, 200 * sizeof(sprite_id));
-    int num_rows = get_num_rows();
-    int row_spacing = 9;
-    int initX = 1, initY = 11;
-    int deltaY = 0;
-    int c = 0;
-    int k = 1;
-    for (int i = 0; i < num_rows; i++)
-    {
-        int deltaX = 0;
-        // Choose a random platform speed, alternating direction
-        k = -k;
-        double speed = rand_number(0.01, 0.1);
-        double block_speed = speed * k;
-        int num_columns = get_num_columns();
-        for (int j = 0; j <= num_columns; j++)
-        {
-            // Choose which type of block to draw
-            char *bitmap = rand_platform_type();
-            int width = 10;
-            // store block information in array.
-            if (bitmap != NULL && c < A_SIZE)
-            {
-                // Choose a random width between 5 and 10
-                width = rand_number(5, 10);
-                // If drawing first or last row, set row speed to 0.
-                if (i == 0 || i + 1 == num_rows)
-                {
-                    block_speed = 0;
-                }
-                Platforms[c] = platforms_setup(initX + deltaX, initY + deltaY, 
-                                                width, block_speed, bitmap);
-                deltaX += width + 1;
-            }
-            else{
-                // If not drawing a block, add space between blocks.
-                deltaX += width + 1;
-            }
-            c++; 
-        }
-        deltaY += row_spacing;
-    }
-}
-
-void platforms_destroy(sprite_id Platforms[], int a_size) {
-    for(int i = 0; i < a_size; i++) {
-        if (Platforms[i] != NULL) {
-            free(Platforms[i]);
-        }
-    }
-}
-
-// From Array of platforms, draw platforms on screen
-void platforms_draw(sprite_id Platforms[], int a_size)
-{
-    for (int j = 0; j < a_size; j++){
-        if (Platforms[j] != NULL){ 
-            sprite_draw(Platforms[j]);
-        }
-    }
-}
-
-// Checks wich blocks in the top row are safe blocks
-// Randomly chooses and returns one of the safe blocks
-sprite_id get_safe_block(sprite_id Platforms[])
-{
-    int i = rand_number(0, get_num_columns());
-    while(Platforms[i] == NULL || Platforms[i]->bitmap != safeBlock_image)
-    {
-        i = rand_number(0, get_num_columns());
-    }
-    return Platforms[i];    
-}
-
-// Initial player spawn function
-sprite_id player_create(sprite_id platforms[])
-{
-    sprite_id safe_block = get_safe_block(platforms);
-    return sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
-}
-
-Playerstate* playerstate_create(sprite_id platforms[], double momentum, int bitmap) {
-    Playerstate* temp = malloc(sizeof(Playerstate));
-
-    temp->player_sprite = player_create(platforms);
-    temp->momentum = momentum;
-    temp->old_block = 0;
-    temp->bitmap = bitmap;
-    temp->dead = false;
-    
-    return temp;
 }
 
 // Draws status display bar at top of screen
@@ -227,24 +53,6 @@ void scoreboard_draw(Gamestate* gamestate, Scoreboard* scoreboard)
 
 }
 
-// Move platforms according to set dx.
-// Moves platform to opposite side of screen when it reaches the edge
-void platforms_update_position(sprite_id* Platforms, int a_size)
-{
-    for (int i = 0; i < a_size; i ++){
-        if (Platforms[i] != NULL){ // Do not attempt to call empty value
-            sprite_step(Platforms[i]);
-            int px = Platforms[i]->x;
-            int py = Platforms[i]->y;
-            if (px + 10 < 0){ // Screen LHS
-                sprite_move_to(Platforms[i], screen_width() - 1, py);
-            }
-            else if(px > screen_width()){ // Screen RHS
-                sprite_move_to(Platforms[i], 0 - 10, py);
-            }
-        }
-    }
-}
 
 /// PROCESS FUNCTIONS
 
@@ -253,10 +61,6 @@ void timer_increase(Scoreboard* scoreboard, double game_start)
 {   
     double time_past = get_current_time() - game_start;
     scoreboard->secondsPast = time_past;
-}
-
-void setDead(Playerstate* playerstate) {
-    playerstate->dead = true;
 }
 
 // Called when player collides with forbidden block or moves out of bounds
@@ -334,75 +138,6 @@ void score_increase(State* state, int new_block)
         state->scoreboard->score++;
     }
     state->playerstate->old_block = new_block;
-}
-
-// Checks collision between two sprites on a pixel level
-bool collision_pixel_level( Sprite *s1, Sprite *s2 )
-{       // Uses code from AMS wk5.
-        // Only check bottom of player model, stops player getting stuck in blocks.
-    int y = round(s1->y + 2);
-    for (int x = s1->x; x < s1->x + sprite_width(s1); x++){
-        // Get relevant values of from each sprite
-        int sx1 = x - round(s1->x);
-        int sy1 = y - ceil(s1->y);
-        int offset1 = sy1 * s1->width + sx1;
-
-        int sx2 = x - round(s2->x);
-        int sy2 = y - round(s2->y-1);
-        int offset2 = sy2 * s2->width + sx2;
-        
-        // If opaque at both points, collisio has occured
-        if (0 <= sx1 && sx1 < s1->width &&
-            0 <= sy2 && sy1 < s1->height &&
-            s1->bitmap[offset1] != ' ')
-            {
-            if (0 <= sx2 && sx2 < s2->width &&
-                0 <= sy2 && sy2 < s2->height && 
-                s2->bitmap[offset2] != ' ')
-                {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// Checks for collision between the player and each block 'Platforms' array
-bool collision_platforms(Playerstate* playerstate, sprite_id* Platforms, int a_size) 
-{
-    bool output = false;
-    int c = 0;
-    for (int i = 0; i < a_size; i++){
-        if(Platforms[i] != NULL)    // Do not check empty platforms
-        { 
-            bool collide = collision_pixel_level(playerstate->player_sprite, Platforms[i]);
-            if (collide)
-            {
-                if(Platforms[i]->bitmap == badBlock_image){
-                    setDead(playerstate);
-                    output = true;
-                    break;
-                }
-                else
-                {   // Die if any part of current block is off screen
-                    if(Platforms[i]->x > screen_width() - Platforms[i]->width ||
-                        Platforms[i]->x < 0){
-                        setDead(playerstate);
-                    }
-                    // Update player speed so that player moves with platform on
-                    playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
-                    output = true;
-                    if (c == 0){
-                        c = i;
-                    }
-                }
-            }
-        } 
-    }
-    if (output == true){
-        // TODO increase score by c
-    }
-    return output;
 }
 
 // Cause the player to die if moved out of bounds to left, right or bottom of screen
@@ -527,23 +262,6 @@ void movement_gravity_apply(Playerstate* playerstate, bool is_colliding)
        playerstate->player_sprite->dx = playerstate->momentum;
     }
 }
-
-// Checks for player collision with chest, hides chest upon collision
-void collision_chest(State* state)
-{ 
-    bool collide = collision_pixel_level(state->playerstate->player_sprite, state->cheststate->chest_sprite);
-    if (collide)
-    {
-        state->gamestate->livesRemaining += 3;
-        state->cheststate->hide_chest_timer = create_timer(2000);
-        //sprite_hide(chest);
-        // move chest off screen, can't collide with player
-        // todo destroy sprite
-
-        setDead(state->playerstate);
-    }
-}
-
 
 // Game over screen displayed when player loses all lives
 void screen_game_over(State* state)

@@ -10,6 +10,7 @@
 #include "ZDK/cab202_sprites.h"
 #include "ZDK/cab202_timers.h"
 #include <unistd.h>
+#include "platforms.h"
 
 typedef struct InitialState {
     int lives;

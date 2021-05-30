@@ -27,6 +27,20 @@ Gamestate* gamestate_create (int lives) {
 void gamestate_destroy(Gamestate* s) {
     free(s);
 }
+
+Playerstate* playerstate_create(sprite_id platforms[], double momentum, int bitmap) {
+    Playerstate* temp = malloc(sizeof(Playerstate));
+
+    sprite_id safe_block = get_safe_block(platforms);
+    temp->player_sprite = sprite_create(safe_block->x, safe_block->y - 3, 6, 3, player_image);
+    temp->momentum = momentum;
+    temp->old_block = 0;
+    temp->bitmap = bitmap;
+    temp->dead = false;
+    
+    return temp;
+}
+
 void playerstate_destroy(Playerstate* state) {
     sprite_destroy(state->player_sprite);
     destroy_timer(state->PlayerStillTimer);
