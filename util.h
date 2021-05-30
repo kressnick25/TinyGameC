@@ -10,8 +10,11 @@
 #include "ZDK/cab202_sprites.h"
 #include "ZDK/cab202_timers.h"
 #include <unistd.h>
+#include "state.h"
 
 #define A_SIZE 200
+
+typedef struct Playerstate Playerstate;
 
 // Returns a random double floating point number between two values
 double rand_number(double min, double max);
@@ -21,5 +24,7 @@ int get_num_columns();
 
 // Returns the number of rows for the current terminal screen size
 int get_num_rows( void );
+
+void setDead(Playerstate *playerstate);
 
 #endif

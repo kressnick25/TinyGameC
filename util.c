@@ -23,3 +23,7 @@ int get_num_rows( void )
     int num_rows = height / row_spacing;
     return num_rows;
 }
+
+void setDead(Playerstate* playerstate) {
+    playerstate->dead = true;
+}

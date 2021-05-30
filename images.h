@@ -1,7 +1,7 @@
 #ifndef IMAGES_H
 #define IMAGES_H "images.h"
 
-#define player_image " ____ {_00_} 8____8"
+#define player_image " ____ {_00_}8____8"
 #define right_image "  ///] //00}//===]"
 #define left_image "[\\\\\\  {00\\\\ [===\\\\\\"
 #define falling_image "  __   /  \\ [_00_]"

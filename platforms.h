@@ -12,6 +12,18 @@
 #include <unistd.h>
 #include "util.h"
 #include "images.h"
+#include "state.h"
+
+typedef enum PLATFORM_TYPE {
+    SAFE = 1,
+    BAD = 2,
+    NONE = 3
+} PLATFORM_TYPE;
+
+void set_platform_type(sprite_id platform, PLATFORM_TYPE type);
+
+PLATFORM_TYPE get_platform_type(sprite_id platform);
+
 // Move platforms according to set dx.
 // Moves platform to opposite side of screen when it reaches the edge
 void platforms_update_position(sprite_id* Platforms, int a_size);
@@ -22,11 +34,12 @@ void platforms_update_position(sprite_id* Platforms, int a_size);
 sprite_id get_safe_block(sprite_id Platforms[]);
 
 // Randomly selects a platform type based on probability
-char* rand_platform_type ( void );
+PLATFORM_TYPE rand_platform_type (void);
 
+char* platform_get_bitmap(PLATFORM_TYPE type);
 
 // Returns a sprite_id for a new platform with set input paramenters
-sprite_id platforms_setup(int px, int py, int width, double dx, char* bitmap);
+sprite_id platforms_setup(int px, int py, int width, double dx, char* bitmap, PLATFORM_TYPE type);
 
 // Create platform co-ordinates, length, width, bitmap, dx and store in array
 // a pointer to an array of spride ids
