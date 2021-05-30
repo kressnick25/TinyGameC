@@ -72,7 +72,7 @@ sprite_id platforms_setup(int px, int py, int width, double dx, char* bitmap, PL
 }
 
 void platforms_create(sprite_id* Platforms) {
-    // memset(Platforms, 0, 200 * sizeof(sprite_id));
+    memset(Platforms, 0, 200 * sizeof(sprite_id));
     int num_rows = get_num_rows();
     int row_spacing = 9;
     int initX = 1, initY = 11;
