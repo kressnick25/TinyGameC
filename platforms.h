@@ -14,6 +14,11 @@
 #include "images.h"
 #include "state.h"
 
+#define PLATFORM_MAX_WIDTH 10
+#define PLATFORM_SPACING 9
+#define FIRST_PLATFORM_X 1
+#define FIRST_PLATFORM_Y 11
+
 typedef enum PLATFORM_TYPE {
     SAFE = 1,
     BAD = 2,

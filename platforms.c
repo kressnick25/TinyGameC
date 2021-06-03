@@ -74,45 +74,37 @@ sprite_id platforms_setup(int px, int py, int width, double dx, char* bitmap, PL
 void platforms_create(sprite_id* Platforms) {
     memset(Platforms, 0, 200 * sizeof(sprite_id));
     int num_rows = get_num_rows();
-    int row_spacing = 9;
-    int initX = 1, initY = 11;
-    int deltaY = 0;
+    int num_columns = get_num_columns();
     int c = 0;
-    int k = 1;
-    for (int i = 0; i < num_rows; i++)
-    {
-        int deltaX = 0;
-        // Choose a random platform speed, alternating direction
-        k = -k;
-        double speed = rand_number(0.01, 0.1);
-        double block_speed = speed * k;
-        int num_columns = get_num_columns();
-        for (int j = 0; j <= num_columns; j++)
-        {
-            // Choose which type of block to draw
+    int platform_direction = 1;
+    int deltaY = 0;
+    int deltaX, width;
+    double speed, block_speed;
+    for (int i = 0; i < num_rows; i++) {
+        platform_direction = -platform_direction;
+        deltaX = 0;
+        speed = rand_number(0.01, 0.1);
+        block_speed = speed * platform_direction;
+        for (int j = 0; j <= num_columns; j++) {
             PLATFORM_TYPE type = rand_platform_type();
-            int width = 10;
-            // store block information in array.
-            if (type != NONE && c < A_SIZE)
-            {
-                // Choose a random width between 5 and 10
+            width = PLATFORM_MAX_WIDTH;
+            if (type != NONE && c < A_SIZE) {
                 width = rand_number(5, 10);
-                // If drawing first or last row, set row speed to 0.
-                if (i == 0 || i + 1 == num_rows)
-                {
+                // if first or last row, set row speed to 0.
+                if (i == 0 || i + 1 == num_rows) {
                     block_speed = 0;
                 }
-                Platforms[c] = platforms_setup(initX + deltaX, initY + deltaY, 
-                                                width, block_speed, platform_get_bitmap(type), type);
-                deltaX += width + 1;
+                Platforms[c] = platforms_setup(FIRST_PLATFORM_X + deltaX,
+                                                FIRST_PLATFORM_Y + deltaY,
+                                                width,
+                                                block_speed,
+                                                platform_get_bitmap(type),
+                                                type );
             }
-            else{
-                // If not drawing a block, add space between blocks.
-                deltaX += width + 1;
-            }
+            deltaX += width + 1;
             c++; 
         }
-        deltaY += row_spacing;
+        deltaY += PLATFORM_SPACING;
     }
 }
 
