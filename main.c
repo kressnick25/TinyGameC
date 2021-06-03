@@ -186,7 +186,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
     int visible_width = screen_width() - 1;
     int px = sprite_x(playerstate->player_sprite);
     if (!on_platform) return;
-    if ( key == 'd' && px < visible_width - 6)
+    if ( key == CONTROL_MOVE_RIGHT && px < visible_width - 6)
     {
         sprite_move(playerstate->player_sprite, 1, 0);
         playerstate->bitmap = 1;
@@ -195,7 +195,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
             playerstate->momentum += 0.3;
         }        
     }
-    else if (key == 'a' && px > 0)
+    else if (key == CONTROL_MOVE_LEFT && px > 0)
     {
         sprite_move( playerstate->player_sprite, -1, 0);
         playerstate->bitmap = 2;
@@ -204,7 +204,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
             playerstate->momentum += -0.3;
         }
     }
-    else if (key == 'w')
+    else if (key == CONTROL_JUMP)
     {
         playerstate->player_sprite->dy = -2;
         // Jumping with horizontal velocity moves further than
