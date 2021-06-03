@@ -13,6 +13,7 @@
 #include "state.h"
 
 #define A_SIZE 200
+#define FRAME_TIME 16.6
 
 typedef struct Playerstate Playerstate;
 

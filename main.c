@@ -334,27 +334,38 @@ int main( void )
         show_screen();
         while (!state->gamestate->game_over)
         {
+            clear_screen();
+
+            // check for dead state action
             if (state->playerstate->dead) {
                 die(state, platforms);
             }
+            
+            // check collision
             bool is_colliding = collision_platforms(state->playerstate, platforms, A_SIZE);
-            clear_screen();
-            collision_chest(state); 
-            movement_gravity_apply(state->playerstate, is_colliding);
-            int key = get_char();
-            movement_player(state->playerstate, key, is_colliding); 
-            animate_player(state->playerstate, is_colliding);
-            chest_move(state->cheststate, key);
-            sprite_step(state->playerstate->player_sprite); 
-            platforms_update_position(platforms, A_SIZE);
+            collision_chest(state);
+
+            // apply player movement
             if (is_out_of_bounds(state->playerstate)) {
                 setDead(state->playerstate);
             }
-            draw_all(state, platforms);
+            int key = get_char();
+            movement_gravity_apply(state->playerstate, is_colliding);
+            movement_player(state->playerstate, key, is_colliding); 
+            animate_player(state->playerstate, is_colliding);
+            sprite_step(state->playerstate->player_sprite);
+
+            // update world
+            chest_move(state->cheststate, key);
+            platforms_update_position(platforms, A_SIZE);
+            
+            // update ui
             timer_increase(state->scoreboard, game_start);
+            draw_all(state, platforms);
             show_screen();
             fflush(stdin); //flush buffer.
-            timer_pause(10);
+            
+            timer_pause(FRAME_TIME);
         }
 
         screen_game_over(state);
