@@ -87,19 +87,21 @@ void die (State* state, sprite_id platforms[]) {
     }
 }
 
+char* get_chest_image(bool is_alt) {
+    if (is_alt) {
+        return chest_image_alt;
+    }
+    else {
+        return chest_image;
+    }
+}
+
 // Alternates chest bitmap between two images
 void animate_chest(Cheststate* cheststate)
 {
     if(cheststate->chest_timer != NULL && timer_expired(cheststate->chest_timer))
     {
-        if (cheststate->alt_chest)
-        {
-            cheststate->chest_sprite->bitmap = chest_image_alt;
-        }
-        else
-        {
-            cheststate->chest_sprite->bitmap = chest_image;
-        }
+        cheststate->chest_sprite->bitmap = get_chest_image(cheststate->alt_chest);
         cheststate->alt_chest = !cheststate->alt_chest;
     }
 }
