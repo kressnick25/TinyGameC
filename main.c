@@ -149,19 +149,19 @@ bool is_out_of_bounds(Playerstate* playerstate) {
 // Holds the image for certain time after button stopped pressed to prevent flickering
 void animate_player(Playerstate* playerstate, bool on_platform)
 {
-    if (playerstate->bitmap == 1)
+    if (playerstate->bitmap == MOVING_RIGHT)
     {
         playerstate->player_sprite->bitmap = right_image;
         playerstate->PlayerStillTimer = create_timer(150);
         playerstate->bitmap = 0;
     }
-    else if (playerstate->bitmap == 2)
+    else if (playerstate->bitmap == MOVING_LEFT)
     {
         playerstate->player_sprite->bitmap = left_image;
         playerstate->PlayerStillTimer = create_timer(150);
         playerstate->bitmap = 0;
     }
-    else if (playerstate->bitmap == 3)
+    else if (playerstate->bitmap == FALLING)
     {
         playerstate->player_sprite->bitmap = falling_image;
         playerstate->PlayerStillTimer = create_timer(150);

@@ -10,4 +10,10 @@
 #define safeBlock_image "===================="
 #define badBlock_image "xxxxxxxxxxxxxxxxxxxx"
 
+typedef enum PLAYER_BITMAP {
+    MOVING_RIGHT = 1,
+    MOVING_LEFT = 2,
+    FALLING = 3,
+} PLAYER_BITMAP;
+
 #endif
