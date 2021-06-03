@@ -229,38 +229,38 @@ void movement_horizontal_apply(Playerstate* playerstate, bool on_platform)
     }
 }
 
+double get_gravity_multiplyer(double dy) {
+    // When jumping, half velocity each step
+    if (dy <= -0.01) {
+        return 0.3;
+    }
+    // When falling (negative velocity) double velocity
+    if (dy > 0 && dy < 0.8) {
+        return 1.3;
+    }
+    // When jump peak reached, flip velocity to negative
+    if(dy > -0.2 && dy < 0) {
+        return -1;
+    }
+    return 1;
+}
 
 void movement_gravity_apply(Playerstate* playerstate, bool is_colliding)
 {
     // When on block, kill velocity
-    if (is_colliding)
-    {
+    if (is_colliding) {
        playerstate->player_sprite->dy = 0;
-   }
-    // When jumping, half velocity each step
-    else if(playerstate->player_sprite->dy <= -0.01)
-    {
-        playerstate->player_sprite->dy *= 0.3;
-    }
-    // When falling (negative velocity) double velocity
-    else if (playerstate->player_sprite->dy > 0 && playerstate->player_sprite->dy < 0.8)
-    {
-        playerstate->player_sprite->dy *= 1.3;
-    }
-    // When jump peak reached, flip velocity to negative
-    else if(playerstate->player_sprite->dy > -0.2 && playerstate->player_sprite->dy < 0)
-    {
-         playerstate->player_sprite->dy = -playerstate->player_sprite->dy;
-    }
-    // Else give player falling velocity
-    else if(!is_colliding && playerstate->player_sprite->dy == 0.0)
-    {
-       playerstate->player_sprite->dy = 0.01;
-    }
-    // Apply accumulated 'momentum' to player speed when off block.
-    if(!is_colliding){
-       playerstate->player_sprite->dx = playerstate->momentum;
-    }
+    } 
+    else {
+        // Give movement at start of fall
+        if (playerstate->player_sprite->dy == 0) {
+            playerstate->player_sprite->dy = 0.01;
+        }
+        // Apply accumulated 'momentum' to player speed when off block.
+        playerstate->player_sprite->dx = playerstate->momentum;
+    } 
+
+    playerstate->player_sprite->dy *= get_gravity_multiplyer(playerstate->player_sprite->dy);
 }
 
 // Game over screen displayed when player loses all lives
