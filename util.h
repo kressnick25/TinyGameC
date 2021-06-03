@@ -18,6 +18,7 @@
 #define CONTROL_MOVE_RIGHT 'd'
 #define CONTROL_MOVE_LEFT 'a'
 #define CONTROL_JUMP 'w'
+#define CONTROL_TOGGLE_CHEST 't'
 
 typedef struct Playerstate Playerstate;
 

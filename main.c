@@ -87,7 +87,7 @@ void die (State* state, sprite_id platforms[]) {
     }
 }
 
-char* get_chest_image(bool is_alt) {
+char* get_chest_bitmap(bool is_alt) {
     if (is_alt) {
         return chest_image_alt;
     }
@@ -101,7 +101,7 @@ void animate_chest(Cheststate* cheststate)
 {
     if(cheststate->chest_timer != NULL && timer_expired(cheststate->chest_timer))
     {
-        cheststate->chest_sprite->bitmap = get_chest_image(cheststate->alt_chest);
+        cheststate->chest_sprite->bitmap = get_chest_bitmap(cheststate->alt_chest);
         cheststate->alt_chest = !cheststate->alt_chest;
     }
 }
@@ -109,14 +109,10 @@ void animate_chest(Cheststate* cheststate)
 // Moves chest along bottom of screen
 void chest_move(Cheststate* cheststate, int key)
 {
-    // Uses code from ZDJ Topic 04
-    // Toggle chest movement when 't' pressed.
-    if (key == 't')
-    {
+    if (key == CONTROL_TOGGLE_CHEST) {
         cheststate->stop_chest = !cheststate->stop_chest;
     }
-    if (!cheststate->stop_chest)
-    {
+    if (!cheststate->stop_chest) {
         sprite_step(cheststate->chest_sprite);
         animate_chest(cheststate);
     }
