@@ -15,41 +15,31 @@ void collision_chest(State* state)
     }
 }
 
-bool collision_platforms(Playerstate* playerstate, sprite_id Platforms[], int a_size) 
-{
-    bool output = false;
-    int c = 0;
-    for (int i = 0; i < a_size; i++){
-        if(Platforms[i] != NULL)    // Do not check empty platforms
-        { 
-            bool collide = collision_pixel_level(playerstate->player_sprite, Platforms[i]);
-            if (collide)
-            {
-                if(get_platform_type(Platforms[i]) == BAD){
-                    setDead(playerstate);
-                    output = true;
-                    break;
-                }
-                else
-                {   // Die if any part of current block is off screen
-                    if(Platforms[i]->x > screen_width() - Platforms[i]->width ||
-                        Platforms[i]->x < 0){
-                        setDead(playerstate);
-                    }
-                    // Update player speed so that player moves with platform on
-                    playerstate->player_sprite->dx = sprite_dx(Platforms[i]);
-                    output = true;
-                    if (c == 0){
-                        c = i;
-                    }
-                }
+bool is_offscreen(double x_pos, int sprite_width) {
+    return x_pos > screen_width() - sprite_width || x_pos < 0;
+}
+
+bool collision_platforms(Playerstate* playerstate, sprite_id Platforms[], int a_size) {
+    bool result = false;
+    for (int i = 0; i < a_size; i++) {
+        sprite_id plt = Platforms[i];
+        if (plt == NULL) continue;
+        result = collision_pixel_level(playerstate->player_sprite, plt);
+        if (result) {
+            if(get_platform_type(plt) == BAD) {
+                setDead(playerstate);
             }
-        } 
+            else {   
+                if(is_offscreen(plt->x, plt->width)) {
+                    setDead(playerstate);
+                }
+                // Update player speed so that player moves with platform on
+                playerstate->player_sprite->dx = sprite_dx(plt);
+            }
+            break;
+        }
     }
-    if (output == true){
-        // TODO increase score by c
-    }
-    return output;
+    return result;
 }
 
 bool collision_pixel_level( Sprite *s1, Sprite *s2 )

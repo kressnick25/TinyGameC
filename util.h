@@ -15,6 +15,11 @@
 #define A_SIZE 200
 #define FRAME_TIME 16.6
 
+#define CONTROL_MOVE_RIGHT 'd'
+#define CONTROL_MOVE_LEFT 'a'
+#define CONTROL_JUMP 'w'
+#define CONTROL_TOGGLE_CHEST 't'
+
 typedef struct Playerstate Playerstate;
 
 // Returns a random double floating point number between two values

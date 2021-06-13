@@ -87,19 +87,21 @@ void die (State* state, sprite_id platforms[]) {
     }
 }
 
+char* get_chest_bitmap(bool is_alt) {
+    if (is_alt) {
+        return chest_image_alt;
+    }
+    else {
+        return chest_image;
+    }
+}
+
 // Alternates chest bitmap between two images
 void animate_chest(Cheststate* cheststate)
 {
     if(cheststate->chest_timer != NULL && timer_expired(cheststate->chest_timer))
     {
-        if (cheststate->alt_chest)
-        {
-            cheststate->chest_sprite->bitmap = chest_image_alt;
-        }
-        else
-        {
-            cheststate->chest_sprite->bitmap = chest_image;
-        }
+        cheststate->chest_sprite->bitmap = get_chest_bitmap(cheststate->alt_chest);
         cheststate->alt_chest = !cheststate->alt_chest;
     }
 }
@@ -107,14 +109,10 @@ void animate_chest(Cheststate* cheststate)
 // Moves chest along bottom of screen
 void chest_move(Cheststate* cheststate, int key)
 {
-    // Uses code from ZDJ Topic 04
-    // Toggle chest movement when 't' pressed.
-    if (key == 't')
-    {
+    if (key == CONTROL_TOGGLE_CHEST) {
         cheststate->stop_chest = !cheststate->stop_chest;
     }
-    if (!cheststate->stop_chest)
-    {
+    if (!cheststate->stop_chest) {
         sprite_step(cheststate->chest_sprite);
         animate_chest(cheststate);
     }
@@ -151,19 +149,19 @@ bool is_out_of_bounds(Playerstate* playerstate) {
 // Holds the image for certain time after button stopped pressed to prevent flickering
 void animate_player(Playerstate* playerstate, bool on_platform)
 {
-    if (playerstate->bitmap == 1)
+    if (playerstate->bitmap == MOVING_RIGHT)
     {
         playerstate->player_sprite->bitmap = right_image;
         playerstate->PlayerStillTimer = create_timer(150);
         playerstate->bitmap = 0;
     }
-    else if (playerstate->bitmap == 2)
+    else if (playerstate->bitmap == MOVING_LEFT)
     {
         playerstate->player_sprite->bitmap = left_image;
         playerstate->PlayerStillTimer = create_timer(150);
         playerstate->bitmap = 0;
     }
-    else if (playerstate->bitmap == 3)
+    else if (playerstate->bitmap == FALLING)
     {
         playerstate->player_sprite->bitmap = falling_image;
         playerstate->PlayerStillTimer = create_timer(150);
@@ -186,7 +184,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
     int visible_width = screen_width() - 1;
     int px = sprite_x(playerstate->player_sprite);
     if (!on_platform) return;
-    if ( key == 'd' && px < visible_width - 6)
+    if ( key == CONTROL_MOVE_RIGHT && px < visible_width - 6)
     {
         sprite_move(playerstate->player_sprite, 1, 0);
         playerstate->bitmap = 1;
@@ -195,7 +193,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
             playerstate->momentum += 0.3;
         }        
     }
-    else if (key == 'a' && px > 0)
+    else if (key == CONTROL_MOVE_LEFT && px > 0)
     {
         sprite_move( playerstate->player_sprite, -1, 0);
         playerstate->bitmap = 2;
@@ -204,7 +202,7 @@ void movement_player(Playerstate* playerstate, int key, bool on_platform)
             playerstate->momentum += -0.3;
         }
     }
-    else if (key == 'w')
+    else if (key == CONTROL_JUMP)
     {
         playerstate->player_sprite->dy = -2;
         // Jumping with horizontal velocity moves further than
@@ -229,38 +227,38 @@ void movement_horizontal_apply(Playerstate* playerstate, bool on_platform)
     }
 }
 
+double get_gravity_multiplyer(double dy) {
+    // When jumping, half velocity each step
+    if (dy <= -0.01) {
+        return 0.3;
+    }
+    // When falling (negative velocity) double velocity
+    if (dy > 0 && dy < 0.8) {
+        return 1.3;
+    }
+    // When jump peak reached, flip velocity to negative
+    if(dy > -0.2 && dy < 0) {
+        return -1;
+    }
+    return 1;
+}
 
 void movement_gravity_apply(Playerstate* playerstate, bool is_colliding)
 {
     // When on block, kill velocity
-    if (is_colliding)
-    {
+    if (is_colliding) {
        playerstate->player_sprite->dy = 0;
-   }
-    // When jumping, half velocity each step
-    else if(playerstate->player_sprite->dy <= -0.01)
-    {
-        playerstate->player_sprite->dy *= 0.3;
-    }
-    // When falling (negative velocity) double velocity
-    else if (playerstate->player_sprite->dy > 0 && playerstate->player_sprite->dy < 0.8)
-    {
-        playerstate->player_sprite->dy *= 1.3;
-    }
-    // When jump peak reached, flip velocity to negative
-    else if(playerstate->player_sprite->dy > -0.2 && playerstate->player_sprite->dy < 0)
-    {
-         playerstate->player_sprite->dy = -playerstate->player_sprite->dy;
-    }
-    // Else give player falling velocity
-    else if(!is_colliding && playerstate->player_sprite->dy == 0.0)
-    {
-       playerstate->player_sprite->dy = 0.01;
-    }
-    // Apply accumulated 'momentum' to player speed when off block.
-    if(!is_colliding){
-       playerstate->player_sprite->dx = playerstate->momentum;
-    }
+    } 
+    else {
+        // Give movement at start of fall
+        if (playerstate->player_sprite->dy == 0) {
+            playerstate->player_sprite->dy = 0.01;
+        }
+        // Apply accumulated 'momentum' to player speed when off block.
+        playerstate->player_sprite->dx = playerstate->momentum;
+    } 
+
+    playerstate->player_sprite->dy *= get_gravity_multiplyer(playerstate->player_sprite->dy);
 }
 
 // Game over screen displayed when player loses all lives
